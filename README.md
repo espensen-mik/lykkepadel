@@ -14,7 +14,7 @@ npm run dev
 
 Læg logoer i `public/logos/` og billeder i `public/images/`. Filer fra public bruges direkte fra roden: `public/logos/logo.svg` bliver til `/logos/logo.svg` i HTML.
 
-Forsiden bruger det vedhæftede brandoplæg i `public/images/lykke-padel-brand.png`. Det kan senere erstattes af separate logoer. Tekst ændres i `index.html`, og farver og layout i `style.css`.
+Forsiden bruger SVG-logoer i `public/images/lykke-padel.svg` og `public/images/lykkeliga.svg`, afledt af originalerne i `public/logos/` med beskåret viewBox. Originalerne er bevaret. Bebas Neue leveres lokalt fra `public/fonts/`, hvor fontlicensen også ligger. Tekst ændres i `index.html`, og farver og layout i `style.css`.
 
 ## Byg til hosting
 
