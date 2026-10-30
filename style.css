@@ -33,13 +33,13 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 6px; }
 .organiser { display: block; width: clamp(105px, 12vw, 160px); margin-top: clamp(30px, 7vh, 76px); flex-shrink: 0; }
 .organiser img { display: block; width: 100%; height: auto; }
 footer { padding: 12px 20px max(16px, env(safe-area-inset-bottom)); color: #a75b50; }
-address { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px 18px; font-style: normal; font-size: 12px; line-height: 1.5; letter-spacing: .65px; text-align: center; }
+address { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px 18px; font-style: normal; font-size: 16px; line-height: 1.5; letter-spacing: .65px; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 @media (max-width: 600px) {
   .event-logo { width: min(90vw, 480px); }
   .event-details { flex-direction: column; gap: 5px; font-size: 23px; }
   .separator { display: none; }
-  address { max-width: 330px; margin-inline: auto; gap: 3px 14px; font-size: 11px; }
+  address { max-width: 330px; margin-inline: auto; gap: 3px 14px; font-size: 15px; }
 }
 @media (max-height: 500px) and (min-width: 601px) {
   .hero { padding-block: 16px; }
