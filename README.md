@@ -1,5 +1,7 @@
 # Lykke Padel
 
+Faviconet er tilpasset fra Tabler Icons' `ping-pong`-ikon med padelhuller og brandfarver. Kilde: https://github.com/tabler/tabler-icons. MIT-licensen findes i `public/licenses/tabler-icons-MIT.txt`.
+
 En enkel, responsiv forside i HTML og CSS. Kræver Node.js 20 eller nyere. Ingen pakker skal installeres.
 
 ## Start lokalt
