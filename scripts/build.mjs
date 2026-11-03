@@ -1,6 +1,13 @@
 import { cp, mkdir, rm } from 'node:fs/promises';
+import { build } from 'esbuild';
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
 for (const file of ['index.html', 'style.css']) await cp(file, `dist/${file}`);
 await cp('public', 'dist', { recursive: true });
-console.log('Forsiden er bygget i dist/');
+for(const route of ['auktion','administration']){
+ await mkdir(`dist/${route}`,{recursive:true});
+ await cp('src/auction.html',`dist/${route}/index.html`);
+}
+await cp('src/auction.css','dist/auction.css');
+await build({entryPoints:['src/auction.js'],outfile:'dist/auction.js',bundle:true,format:'esm',platform:'browser',target:['es2022'],minify:true});
+console.log('Forside og auktionssider er bygget i dist/');

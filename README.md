@@ -18,6 +18,12 @@ Læg logoer i `public/logos/` og billeder i `public/images/`. Filer fra public b
 
 Forsiden bruger SVG-logoer i `public/images/lykke-padel.svg` og `public/images/lykkeliga.svg`, afledt af originalerne i `public/logos/` med beskåret viewBox. Originalerne er bevaret. Bebas Neue leveres lokalt fra `public/fonts/`, hvor fontlicensen også ligger. Tekst ændres i `index.html`, og farver og layout i `style.css`.
 
+## Supabase
+
+Kopiér `.env.example` til `.env.local`, og angiv projektets URL og publishable key. `.env.local` ignoreres af Git og kopieres ikke til den offentlige hjemmeside. Kontrollér forbindelsen med `npm run check:supabase` (Node.js 20.12 eller nyere).
+
+Ved senere integration på Vercel oprettes de samme miljøvariabler: `SUPABASE_URL` og `SUPABASE_PUBLISHABLE_KEY`. Brug ikke secret/service-role-nøgler i offentlig kode. Forbindelsestjekket læser kun Auth-indstillinger; det tester ikke tabeladgang. Forsiden bruger endnu ikke Supabase, og auktionstabeller og adgangspolitikker oprettes separat.
+
 ## Byg til hosting
 
 ```sh
@@ -28,3 +34,22 @@ npm run preview
 `dist/` indeholder den færdige statiske hjemmeside og kan bruges på statisk hosting. Der er endnu ingen tilmelding eller formular.
 
 GitHub-repo: https://github.com/espensen-mik/lykkepadel
+
+## Makkerauktion (under udvikling)
+
+Installér projektets pakker med `npm ci` (Node.js 22 eller nyere). `npm run dev` bygger siderne og starter serveren. Efter ændring af kildefiler bygges igen med `npm run build`, og browseren genindlæses.
+
+- `/` er uændret og har ingen links til auktionen.
+- `/auktion` er Supabase-tilsluttet testversion med login, profil og manuel godkendelse af budgivere.
+- `/administration` bruger Google Workspace-login og eksplicit administratorrolle.
+- `/auktion?demo=1` og `/administration?demo=1` er lokale design-/funktionstest, som kun virker på localhost/127.0.0.1. De bruger fiktive profiler, stockportrætter og sessionStorage, aldrig rigtige bud eller databaseændringer. Luk browserens session eller brug Nulstil testdata for at nulstille.
+
+Den lokale `.env.local` har `AUCTIONS_ENABLED=true` til test. På Vercel er funktionen som standard lukket; ved senere test angives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` og `AUCTIONS_ENABLED=true` i miljøvariabler og der laves ny deployment. API-nøglen i konfigurationen er kun publishable. Databasens RLS og administratorfunktioner er de egentlige adgangsregler, også hvis nogen kender API-adressen.
+
+Google-opsætning og første administrator: se `database/GOOGLE-ADMIN.md`. Kør den nye `auction-google-admin.sql`, efter de to første setup-filer. Administratorrollen tildeles med `auction-admin.sql` efter første Google-login. De fiktive eksempelauktioner ligger som kladder, indtil admin publicerer dem; auktioner med bud låses for redigering. Billeder indsættes som HTTPS-URL'er; upload kan tilføjes senere.
+
+Budmotoren bruger databaselås, servertid og idempotente forespørgsler. Bud i danske kroner skal være i trin på 500 kr., og mindst 500 kr. over det aktuelle bud. Første bud skal være mindst startprisen. Visningen opdaterer bud automatisk hvert 10. sekund; serveren kontrollerer altid det aktuelle beløb ved afgivelse. Der er ingen automatisk forlængelse ved sene bud i denne version.
+
+Afsluttede auktioners højeste bud kan eksporteres som fakturagrundlag i admin. Der sendes ingen faktura automatisk, og ingen penge trækkes. Resend, SMS, MitID og endelige auktionsvilkår er endnu ikke tilkoblet. Supabase Auth står for konto-/bekræftelsesmails; produktionsudsendelse kræver SMTP-opsætning (fx Resend). `preview-v1` er kun testvilkår og må ikke bruges til rigtige betalingsforpligtelser.
+
+Kør `npm test` for lokale database- og konfigurationskontroller. Rigtig OAuth, maillevering og bud fra flere samtidige Supabase-sessioner skal end-to-end-testes før offentlig åbning. De manuelle SQL-filer er ikke registreret i Supabase CLI-migrationshistorikken.
