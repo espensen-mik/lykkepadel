@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {packages,validateRegistration,readRegistration,canTestBid} from '../src/registration.js';
+const person={type:'individual',name:'Test Deltager',email:'test@example.com',phone:'+45 12345678'};
+test('individual and pair registrations use distinct fixed prices and seat counts',()=>{assert.equal(packages.individual.price,10000);assert.equal(packages.individual.seats,1);assert.equal(packages.pair.price,25000);assert.equal(packages.pair.seats,2);});
+test('pair needs a named partner; invalid category and contact data are rejected',()=>{assert.throws(()=>validateRegistration({...person,type:'pair'}));assert.throws(()=>validateRegistration({...person,type:'free'}));assert.throws(()=>validateRegistration({...person,email:'invalid'}));assert.throws(()=>validateRegistration({...person,phone:'not-a-number'}));assert.equal(validateRegistration({...person,type:'pair',partner:'Test Makker'}).partner,'Test Makker');});
+test('only an individual test registration enables local test bids',()=>{assert.equal(canTestBid({...person,test:true}),true);assert.equal(canTestBid({...person,type:'pair',test:true}),false);assert.equal(canTestBid(person),false);assert.equal(canTestBid(null),false);});
+test('corrupt or non-test browser data does not grant access',()=>{assert.equal(readRegistration({getItem:()=>'{bad'}),null);assert.equal(readRegistration({getItem:()=>JSON.stringify(person)}),null);assert.equal(readRegistration({getItem:()=>JSON.stringify({...person,test:true})}).type,'individual');assert.equal(readRegistration({getItem(){throw new Error('Blocked');}}),null);});

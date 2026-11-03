@@ -4,7 +4,7 @@ await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
 for (const file of ['index.html', 'style.css']) await cp(file, `dist/${file}`);
 await cp('public', 'dist', { recursive: true });
-for(const route of ['auktion','admin','administration']){
+for(const route of ['auktion','tilmelding','admin','administration']){
  await mkdir(`dist/${route}`,{recursive:true});
  await cp('src/auction.html',`dist/${route}/index.html`);
 }

@@ -55,3 +55,11 @@ Afsluttede auktioners højeste bud kan eksporteres som fakturagrundlag i admin. 
 Kør `npm test` for lokale database- og konfigurationskontroller. Rigtig OAuth, maillevering og bud fra flere samtidige Supabase-sessioner skal end-to-end-testes før offentlig åbning. De manuelle SQL-filer er ikke registreret i Supabase CLI-migrationshistorikken.
 
 Den tidligere adresse `/administration` fører til `/admin`. Google-login bruger fortsat den allerede registrerede OAuth-returadresse `/administration`, som fører videre til `/admin`.
+
+## Eventtilmelding i test
+
+`/tilmelding` viser individuel deltagelse (10.000 kr., én plads) og par (25.000 kr., to pladser), kontaktoplysninger, gennemgang og testkvittering. Linket findes kun på auktionssiden; forsiden ændres ikke. Login- og adminlinks er fjernet fra den offentlige auktion. Admin åbnes via `/admin`.
+
+Testtilmeldingen gemmes kun i sessionStorage i samme fane. Ingen database, mail, betaling eller pladsreservation. Brug fiktive data. Kun individuel testtilmelding giver lokale testbud; par kan ikke byde. Databaseforbundne bud fra UI er midlertidigt stoppet, indtil betalingsadgang kan kontrolleres på serveren. De eksisterende databasefunktioner skal udvides med betalt individuel deltagelse før lancering.
+
+Det samlede forløb og de udestående integrationer er beskrevet i [docs/TILMELDING-OG-AUKTION.md](docs/TILMELDING-OG-AUKTION.md).

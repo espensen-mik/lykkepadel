@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { initialLots } from './demo.js';
+import { packages,registrationKey,validateRegistration,readRegistration,canTestBid } from './registration.js';
 
 const $=s=>document.querySelector(s);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,7 +12,10 @@ const adminPage=/^\/(admin|administration)\/?$/.test(location.pathname);
 if(location.pathname.startsWith('/administration'))history.replaceState(null,'','/admin'+location.search+location.hash);
 const main=$('#main'), dialog=$('#modal');
 let client,user,profile,isAdmin=false,lots=[],sort='soon',adminTab='lots',polling=false,toastTimer;
-let demoLoggedIn=false;
+let registration=readRegistration(sessionStorage);
+let demoLoggedIn=canTestBid(registration);
+const registrationPage=/^\/tilmelding\/?$/.test(location.pathname);
+const registrationLink=()=>'/tilmelding';
 let demoProfiles=[];
 function readDemo(){try{return JSON.parse(sessionStorage.getItem('lykke-auction-demo'))||initialLots();}catch{return initialLots();}}
 function saveDemo(){sessionStorage.setItem('lykke-auction-demo',JSON.stringify(lots));}
@@ -21,7 +25,6 @@ const closed=lot=>new Date(lot.ends_at).getTime()<=Date.now();
 const minimum=lot=>lot.bid_count?lot.current_bid+500:lot.starting_price;
 function countdown(value){const ms=Math.max(0,new Date(value).getTime()-Date.now());if(!ms)return 'Auktionen er slut';const s=Math.floor(ms/1000);return `${Math.floor(s/86400)}d ${String(Math.floor(s/3600)%24).padStart(2,'0')}t ${String(Math.floor(s/60)%60).padStart(2,'0')}m ${String(s%60).padStart(2,'0')}s`;}
 function link(id){return `/auktion${demo?'?demo=1':''}${id?'#spiller/'+encodeURIComponent(id):''}`;}
-function adminLink(){return `/admin${demo?'?demo=1':''}`;}
 function modal(html){$('#modal-content').innerHTML=html;if(!dialog.open)dialog.showModal();}
 function errorHtml(message){return `<p class="error" role="alert">${esc(message)}</p>`;}
 function messageError(error){return error?.message||'Noget gik galt. Prøv igen.';}
@@ -46,7 +49,10 @@ async function fetchLots(){
  const {data,error}=await client.from('auction_lots').select('*').order('created_at',{ascending:true});
  if(error)throw error;lots=data||[];
 }
-function accountLabel(){ $('#account').innerHTML=adminPage&&!demo&&!isAdmin?'Google-login ↗':(demoLoggedIn?'Testbudgiver':user?'Min profil':'Log ind / Opret profil')+' <span aria-hidden="true">↗</span>'; }
+function accountLabel(){
+ $('#account').hidden=adminPage&&!isAdmin;
+ $('#account').innerHTML=(adminPage?'Min profil':'Tilmeld dig')+' <span aria-hidden="true">↗</span>';
+}
 async function googleLogin(){
  const {error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/administration',queryParams:{hd:'lykkeliga.dk',prompt:'select_account'}}});
  if(error)throw error;
@@ -59,12 +65,9 @@ function showAdminLogin(){
 function showAccount(signup=false){
  if(adminPage&&!demo&&!isAdmin){showAdminLogin();return;}
 
- if(demo){
-  modal(`<p class="eyebrow">Udviklingsvisning</p><h2>Prøv budgivningen</h2><p>Du bruger en lokal testprofil. Ingen oplysninger eller bud sendes til Supabase, og der er ingen betaling.</p><button class="primary" id="demo-login">Fortsæt som testbudgiver ↗</button><p class="form-switch"><a href="${adminLink()}">Åbn testadministration →</a></p>`);
-  $('#demo-login').onclick=()=>{demoLoggedIn=true;dialog.close();accountLabel();toast('Testprofilen er klar. Vælg din lykkemakker.');};return;
- }
+ if(demo){location.href=registrationLink();return;}
  if(user){
-  modal(`<p class="eyebrow">Din profil</p><h2>${esc(profile?.full_name||'Velkommen')}</h2><p>${esc(user.email)}</p><p>${profile?(profile.approved?'Du er godkendt til at byde.':'Din profil afventer personlig godkendelse fra LykkeLiga.'):'Udfyld dine kontaktoplysninger, før du kan blive godkendt.'}</p>${!profile?'<button class="primary" id="complete-profile">Udfyld profil →</button>':''}${isAdmin?`<p><a href="${adminLink()}">Gå til administration →</a></p>`:''}<button class="secondary" id="logout">Log ud</button>`);
+  modal(`<p class="eyebrow">Din profil</p><h2>${esc(profile?.full_name||'Velkommen')}</h2><p>${esc(user.email)}</p><p>${profile?(profile.approved?'Du er godkendt til at byde.':'Din profil afventer personlig godkendelse fra LykkeLiga.'):'Udfyld dine kontaktoplysninger, før du kan blive godkendt.'}</p>${!profile?'<button class="primary" id="complete-profile">Udfyld profil →</button>':''}<button class="secondary" id="logout">Log ud</button>`);
   $('#complete-profile')?.addEventListener('click',showProfileForm);
   $('#logout').onclick=async()=>{await client.auth.signOut();user=profile=null;isAdmin=false;dialog.close();await refresh();};return;
  }
@@ -94,7 +97,7 @@ function showProfileForm(){
  modal(`<p class="eyebrow">Før du byder</p><h2>Lad os lære dig at kende</h2><form id="profile-form"><label>Fuldt navn<input name="name" autocomplete="name" minlength="2" maxlength="120" required></label><label>Mobilnummer<input name="phone" type="tel" autocomplete="tel" minlength="6" maxlength="30" required></label><label>Faktureringsadresse<textarea name="address" autocomplete="street-address" minlength="5" maxlength="500" required></textarea></label><label class="check-label"><input name="terms" type="checkbox" required><span>Jeg accepterer testvilkårene (preview-v1): Dette er en testauktion uden betaling. Mine kontaktoplysninger bruges til at behandle min profil. Min mail skal bekræftes, og LykkeLiga skal godkende mig før testbud. Mobilnummeret er selvoplyst og ikke identitetsverificeret.</span></label><button class="primary" type="submit">Send til godkendelse →</button></form>`);
  useForm($('#profile-form'),async form=>{const {error}=await client.rpc('register_bidder',{p_name:field(form,'name'),p_phone:field(form,'phone'),p_address:field(form,'address')});if(error)throw error;await loadIdentity();dialog.close();await refresh();toast('Din profil afventer godkendelse.');});
 }
-$('#account').onclick=()=>showAccount();
+$('#account').onclick=()=>{if(adminPage)showAccount();else location.href=registrationLink();};
 
 function card(lot,i){return `<article class="card" style="--i:${i}"><a class="card-link" href="${link(lot.id)}" aria-label="Se auktionen med ${esc(lot.name)}"><div class="portrait"><img src="${esc(safeImage(lot.image_url))}" alt="Portræt til eksempelprofilen ${esc(lot.name)}" loading="${i<3?'eager':'lazy'}"><span class="lot-number">MAKKER / ${String(i+1).padStart(2,'0')}</span>${demo?'<span class="example-label">Fiktiv eksempelprofil</span>':''}</div><div class="card-heading"><h2>${esc(lot.name)}</h2><span class="category">${esc(lot.category)}</span></div><p class="card-description">${esc(lot.description)}</p><div class="bid-row"><div><span class="caption">${lot.bid_count?'Seneste bud':'Startpris'}</span><span class="price">${money(lot.current_bid||lot.starting_price)}</span></div><span class="bid-link">${closed(lot)?'Se resultat':'Se & byd'} ↗</span></div><span class="countdown ${closed(lot)?'ended':''}" data-ends="${esc(lot.ends_at)}">${countdown(lot.ends_at)}</span><p class="card-note">${lot.bid_count} bud · ${date(lot.ends_at)}</p></a></article>`;}
 function listing(){
@@ -102,16 +105,16 @@ function listing(){
  if(sort==='soon')visible.sort((a,b)=>new Date(a.ends_at)-new Date(b.ends_at));
  if(sort==='highest')visible.sort((a,b)=>b.current_bid-a.current_bid);
  if(sort==='lowest')visible.sort((a,b)=>(a.current_bid||a.starting_price)-(b.current_bid||b.starting_price));
- main.innerHTML=`<section class="hero"><div><p class="eyebrow">Lykke Padel / Makkerauktion</p><h1>Godt selskab.<span>En bedre sag.</span></h1></div><p class="hero-copy">Find din lykkemakker.<br>Byd på en plads ved siden af en helt særlig spiller — og spil for mere lykke.<small>2. april 2027 · Pakhus 77, Aarhus<br>Betaling med faktura efter auktionen.</small></p></section><section class="auctions" aria-label="Spillerauktioner"><div class="toolbar"><p><span class="live-dot"></span>${visible.length} ${visible.length===1?'makker':'makkere'} på banen</p><label class="sr-only" for="sort">Sortér auktioner</label><select id="sort"><option value="soon">Udløber først</option><option value="highest">Højeste bud</option><option value="lowest">Laveste bud</option></select></div>${visible.length?`<div class="grid">${visible.map(card).join('')}</div>`:`<div class="empty"><p>${user?'Ingen auktioner at vise endnu. Din profil kan afvente godkendelse, eller auktionerne ligger som kladder.':'Auktionerne er ikke åbnet endnu. Log ind for adgang som godkendt testbudgiver.'}</p><button class="secondary" id="empty-login">${user?'Min profil':'Log ind / Opret profil'} →</button>${isAdmin?`<p><a href="${adminLink()}">Gå til administration →</a></p>`:''}</div>`}</section><section class="manifesto"><h2>Din makker. Vores fællesskab.</h2><p>Padel, spilleglæde og en god sag.<br>Det er Lykke Padel.</p></section>${demo?`<p class="admin-demo-link" style="padding:0 5%"><a href="${adminLink()}">Test administrationen →</a></p>`:''}`;
- $('#sort').value=sort;$('#sort').onchange=event=>{sort=event.target.value;listing();};$('#empty-login')?.addEventListener('click',()=>showAccount());
+ main.innerHTML=`<section class="hero"><div><p class="eyebrow">Lykke Padel / Makkerauktion</p><h1>Godt selskab.<span>En bedre sag.</span></h1></div><p class="hero-copy">Find din lykkemakker.<br>Byd på en plads ved siden af en helt særlig spiller — og spil for mere lykke.<small>2. april 2027 · Pakhus 77, Aarhus<br>Makkerauktion for individuelle deltagere.<br>Deltagelse: 10.000 kr. · Vinderbud betales oveni med faktura.</small></p></section><section class="auctions" aria-label="Spillerauktioner"><div class="toolbar"><p><span class="live-dot"></span>${visible.length} ${visible.length===1?'makker':'makkere'} på banen</p><label class="sr-only" for="sort">Sortér auktioner</label><select id="sort"><option value="soon">Udløber først</option><option value="highest">Højeste bud</option><option value="lowest">Laveste bud</option></select></div>${visible.length?`<div class="grid">${visible.map(card).join('')}</div>`:`<div class="empty"><p>${user?'Ingen auktioner at vise endnu. Din profil kan afvente godkendelse, eller auktionerne ligger som kladder.':'Auktionerne er ikke åbnet endnu. Tilmeld dig individuelt for at prøve testauktionen.'}</p><button class="secondary" id="empty-login">Tilmeld dig →</button></div>`}</section><section class="manifesto"><h2>Din makker. Vores fællesskab.</h2><p>Padel, spilleglæde og en god sag.<br>Det er Lykke Padel.</p></section>`;
+ $('#sort').value=sort;$('#sort').onchange=event=>{sort=event.target.value;listing();};$('#empty-login')?.addEventListener('click',()=>{location.href=registrationLink();});
 }
 function detail(id){
  const lot=lots.find(l=>l.id===id);if(!lot){main.innerHTML=`<div class="empty"><h1>Ingen auktion her</h1><p>Auktionen er ikke tilgængelig for din profil.</p><a class="secondary" href="${link()}">Tilbage til alle makkere →</a></div>`;return;}
- main.innerHTML=`<section class="detail"><a class="back" href="${link()}">← Alle lykkemakkere</a><div class="detail-grid"><div class="portrait"><img src="${esc(safeImage(lot.image_url))}" alt="Portræt af ${esc(lot.name)}">${demo?'<span class="example-label">Fiktiv eksempelprofil · Stockfoto</span>':''}</div><div class="detail-content"><p class="eyebrow">Din kommende makker / ${esc(lot.category)}</p><h1>${esc(lot.name)}</h1><p class="detail-description">${esc(lot.description)}</p><div class="detail-meta">2. april 2027 · Pakhus 77, Aarhus<br><span data-ends="${esc(lot.ends_at)}">${countdown(lot.ends_at)}</span><br><span class="help">Slutter ${date(lot.ends_at)} · Dansk tid</span></div><div class="bid-panel"><span class="caption">${lot.bid_count?'Seneste bud':'Startpris'} · ${lot.bid_count} bud</span><div class="detail-price">${money(lot.current_bid||lot.starting_price)}</div>${closed(lot)?'<p class="help">Auktionen er afsluttet. Der kan ikke afgives flere bud.</p>':`<form id="bid-form"><label for="amount" class="caption" style="margin-top:20px">Dit bud i kroner</label><div class="bid-controls"><button class="step" type="button" id="minus" aria-label="Sænk bud med 500 kroner">−</button><input id="amount" name="amount" type="number" min="${minimum(lot)}" max="10000000" step="500" value="${minimum(lot)}" required><button class="step" type="button" id="plus" aria-label="Hæv bud med 500 kroner">+</button></div><button class="primary" type="submit">${demo||user?'Giv dit bud':'Log ind og byd'} ↗</button></form><p class="help">Mindst ${money(minimum(lot))} Bud hæves i trin på 500 kr.<br>Du bekræfter beløbet, inden buddet afgives.</p>`}</div><p class="help detail-note">${demo?'Dette er en lokal demonstration. Profiler og bud er fiktive; der sendes ingen faktura.':'Testversion (preview-v1). Ingen betaling eller faktura udsendes fra denne test. Før den offentlige auktion offentliggøres de endelige vilkår og den præcise makkeroplevelse.'}</p></div></div></section>`;
+ main.innerHTML=`<section class="detail"><a class="back" href="${link()}">← Alle lykkemakkere</a><div class="detail-grid"><div class="portrait"><img src="${esc(safeImage(lot.image_url))}" alt="Portræt af ${esc(lot.name)}">${demo?'<span class="example-label">Fiktiv eksempelprofil · Stockfoto</span>':''}</div><div class="detail-content"><p class="eyebrow">Din kommende makker / ${esc(lot.category)}</p><h1>${esc(lot.name)}</h1><p class="detail-description">${esc(lot.description)}</p><div class="detail-meta">2. april 2027 · Pakhus 77, Aarhus<br><span data-ends="${esc(lot.ends_at)}">${countdown(lot.ends_at)}</span><br><span class="help">Slutter ${date(lot.ends_at)} · Dansk tid</span></div><div class="bid-panel"><span class="caption">${lot.bid_count?'Seneste bud':'Startpris'} · ${lot.bid_count} bud</span><div class="detail-price">${money(lot.current_bid||lot.starting_price)}</div>${closed(lot)?'<p class="help">Auktionen er afsluttet. Der kan ikke afgives flere bud.</p>':`<form id="bid-form"><label for="amount" class="caption" style="margin-top:20px">Dit bud i kroner</label><div class="bid-controls"><button class="step" type="button" id="minus" aria-label="Sænk bud med 500 kroner">−</button><input id="amount" name="amount" type="number" min="${minimum(lot)}" max="10000000" step="500" value="${minimum(lot)}" required><button class="step" type="button" id="plus" aria-label="Hæv bud med 500 kroner">+</button></div><button class="primary" type="submit">${demo&&demoLoggedIn?'Giv dit testbud':'Tilmeld dig for at byde'} ↗</button></form><p class="help">Mindst ${money(minimum(lot))} Bud hæves i trin på 500 kr.<br>Du bekræfter beløbet, inden buddet afgives.</p>`}</div><p class="help detail-note">${demo?'Dette er en lokal demonstration. Profiler og bud er fiktive; der sendes ingen faktura.':'Testversion (preview-v1). Ingen betaling eller faktura udsendes fra denne test. Før den offentlige auktion offentliggøres de endelige vilkår og den præcise makkeroplevelse.'}</p></div></div></section>`;
  if(!closed(lot)){
   $('#minus').onclick=()=>$('#amount').value=Math.max(minimum(lot),Number($('#amount').value)-500);
   $('#plus').onclick=()=>$('#amount').value=Math.min(10000000,Number($('#amount').value)+500);
-  $('#bid-form').onsubmit=event=>{event.preventDefault();if(!demo&&!user||demo&&!demoLoggedIn){showAccount();return;}if(!demo&&!profile?.approved){toast('Din profil skal godkendes af LykkeLiga, før du kan byde.');if(!profile)showProfileForm();return;}confirmBid(lot,Number($('#amount').value));};
+  $('#bid-form').onsubmit=event=>{event.preventDefault();if(!demo){modal('<h2>Vi gør klar til auktionen</h2><p>Adgang til den færdige auktion kræver betalt individuel deltagelse. Tilmeldingen kan indtil videre prøves uden betaling.</p><a class="primary" href="/tilmelding">Prøv tilmeldingen →</a>');return;}if(!demoLoggedIn){if(registration?.type==='pair'){modal('<h2>I spiller som par.</h2><p>Makkerauktionen er for individuelle deltagere. Jeres tilmelding omfatter allerede et makkerpar.</p><a class="secondary" href="/tilmelding">Prøv individuel tilmelding →</a>');}else location.href=registrationLink();return;}if(!demo&&!profile?.approved){toast('Din profil skal godkendes af LykkeLiga, før du kan byde.');if(!profile)showProfileForm();return;}confirmBid(lot,Number($('#amount').value));};
  }
 }
 function confirmBid(lot,amount){
@@ -119,7 +122,7 @@ function confirmBid(lot,amount){
  const request=crypto.randomUUID();
  modal(`<p class="eyebrow">${demo?'Testbud':'Bekræft dit bud'}</p><h2>Dig & ${esc(lot.name.split(' ')[0])}?</h2><p>Du byder <strong>${money(amount)}</strong> på at blive makker med ${esc(lot.name)}.</p><p class="help">Dette er en testauktion uden betaling. I den færdige auktion betales vinderbeløbet med faktura.</p><form id="confirm-form"><button class="primary" type="submit">Bekræft ${money(amount)} ↗</button></form>`);
  useForm($('#confirm-form'),async()=>{
-  if(demo){if(closed(lot)||amount<minimum(lot))throw new Error('Auktionen er udløbet, eller buddet er blevet overbudt.');lot.current_bid=amount;lot.bid_count++;saveDemo();}
+  if(demo){if(!canTestBid(readRegistration(sessionStorage)))throw new Error('Individuel testtilmelding kræves for at byde.');if(closed(lot)||amount<minimum(lot))throw new Error('Auktionen er udløbet, eller buddet er blevet overbudt.');lot.current_bid=amount;lot.bid_count++;saveDemo();}
   else{const {error}=await client.rpc('place_auction_bid',{p_lot:lot.id,p_amount:amount,p_request:request});if(error){await fetchLots();detail(lot.id);throw error;}await fetchLots();}
   dialog.close();detail(lot.id);toast(`${demo?'Testbud':'Bud'} på ${money(amount)} er registreret.`);
  });
@@ -159,12 +162,13 @@ function editLot(lot){
   dialog.close();await adminView();toast('Auktionen er gemt.');
  });
 }
-async function render(){accountLabel();if(adminPage){await adminView();return;}const id=location.hash.startsWith('#spiller/')?decodeURIComponent(location.hash.slice(9)):null;if(id)detail(id);else listing();}
+async function render(){accountLabel();if(registrationPage){registrationView();return;}if(adminPage){await adminView();return;}const id=location.hash.startsWith('#spiller/')?decodeURIComponent(location.hash.slice(9)):null;if(id)detail(id);else listing();}
 async function refresh(){if(!demo){await loadIdentity();await fetchLots();}await render();}
 window.addEventListener('hashchange',()=>{render().catch(error=>toast(error.message));});
 setInterval(()=>{document.querySelectorAll('[data-ends]').forEach(el=>el.textContent=countdown(el.dataset.ends));const bidForm=$('#bid-form');if(bidForm){const id=location.hash.slice(9);if(lots.find(l=>l.id===id&&closed(l)))detail(id);}},1000);
 setInterval(async()=>{if(demo||!client||document.hidden||polling||dialog.open||adminPage)return;polling=true;try{const old=JSON.stringify(lots);await fetchLots();if(old!==JSON.stringify(lots))await render();}catch{toast('Kunne ikke opdatere bud. Din forbindelse kontrolleres igen om lidt.');}finally{polling=false;}},10000);
 async function start(){
+ if(registrationPage){$('#preview-banner').textContent='TESTTILMELDING · INGEN BETALING · INGEN PLADS RESERVERES';$('#preview-banner').hidden=false;accountLabel();registrationView();return;}
  if(demo){$('#preview-banner').hidden=false;lots=readDemo();await render();return;}
  const response=await fetch('/api/auction-config'+(adminPage?'?context=admin':''));
  if(response.status===404&&!adminPage){demo=true;$('#preview-banner').hidden=false;lots=readDemo();await render();return;}
@@ -176,3 +180,29 @@ async function start(){
  await client.auth.getSession();await refresh();
 }
 start().catch(error=>{main.innerHTML=`<div class="empty"><h1>Vi mangler forbindelsen.</h1><p>Auktionen kunne ikke indlæses. Forsiden er stadig tilgængelig.</p>${errorHtml(messageError(error))}<button class="secondary" id="retry">Prøv igen →</button></div>`;$('#retry').onclick=()=>location.reload();});
+
+function registrationView(step=1,draft={type:'individual'}){
+ document.title='Tilmelding — Lykke Padel';
+ const chosen=packages[draft.type]||packages.individual;
+ const inclusions='<p>Mad & forplejning · T-shirt · Præmier · Goodiebag · Showkamp om aftenen</p>';
+ const steps=`<ol class="registration-steps" aria-label="Tilmeldingens trin">${['Vælg deltagelse','Dine oplysninger','Bekræft'].map((text,i)=>`<li ${step===i+1?'aria-current="step"':''}><span>${i+1}</span>${text}</li>`).join('')}</ol>`;
+ main.innerHTML=`<section class="registration"><a class="back" href="/auktion">← Til makkerauktionen</a><div class="registration-heading"><p class="eyebrow">2. april 2027 / Pakhus 77, Aarhus</p><h1>En plads på banen.<br>En forskel for andre.</h1><p>Omkring 70 spillere. Én fælles sag. Vær med til en dag med padel, fællesskab og mere lykke.</p></div>${steps}<div id="registration-content"></div></section>`;
+ const content=$('#registration-content');
+ if(step===1){
+  content.innerHTML=`<form id="package-form"><fieldset class="package-options"><legend class="sr-only">Hvordan vil du deltage?</legend>${Object.entries(packages).map(([key,p])=>`<label class="package-option"><input type="radio" name="type" value="${key}" ${draft.type===key?'checked':''} required><span class="package-inner"><span class="eyebrow">${p.seats===1?'1 deltager':'2 deltagere · ét par'}</span><strong>${p.name}</strong><span class="package-price">${money(p.price)}</span><span class="package-description">${key==='individual'?'Vi sammensætter dig med en makker. Du kan også byde på en kendt eller professionel spiller i makkerauktionen.':'I tilmelder jer som et fast makkerpar og spiller sammen. Makkerauktionen er for individuelle deltagere.'}</span><span class="package-choice">Vælg ${key==='individual'?'individuel':'par'} <span aria-hidden="true">→</span></span></span></label>`).join('')}</fieldset><div class="included"><h2>Hele oplevelsen er med.</h2>${inclusions}<p class="help">Tilmeldingsbeløbet er arrangementets primære charitybidrag. Et eventuelt vinderbud på en makker kommer oveni.</p></div><div class="registration-actions"><p class="help">Du prøver tilmeldingen. Der opkræves ingen betaling, og der reserveres ingen plads.</p><button class="primary" type="submit">Fortsæt →</button></div></form>`;
+  $('#package-form').onsubmit=e=>{e.preventDefault();registrationView(2,{...draft,type:field(e.currentTarget,'type')});window.scrollTo(0,0);};
+ }else if(step===2){
+  content.innerHTML=`<div class="registration-layout"><form id="event-registration-form"><h2>Hvem kommer på banen?</h2><p class="help">Brug gerne fiktive oplysninger i testen. De gemmes kun i denne browsers session.</p><label>Dit fulde navn<input name="name" autocomplete="name" maxlength="120" value="${esc(draft.name||'')}" required></label><div class="form-pair"><label>Mailadresse<input name="email" type="email" autocomplete="email" maxlength="254" value="${esc(draft.email||'')}" required></label><label>Mobilnummer<input name="phone" type="tel" autocomplete="tel" maxlength="30" value="${esc(draft.phone||'')}" required></label></div>${draft.type==='pair'?`<label>Din makkers fulde navn<input name="partner" maxlength="120" value="${esc(draft.partner||'')}" required></label>`:''}<p class="help">T-shirtstørrelse og særlige kostbehov indsamler vi senere.</p><div class="registration-actions"><button type="button" class="text-button" id="package-back">← Vælg deltagelse</button><button class="primary" type="submit">Se din tilmelding →</button></div></form><aside class="registration-summary"><p class="eyebrow">Din deltagelse</p><h2>${chosen.name}</h2><p>${chosen.seats} ${chosen.seats===1?'deltager':'deltagere'}</p><strong class="package-price">${money(chosen.price)}</strong><p class="help">Pris ved den endelige tilmelding.<br>Du betaler 0 kr. i testen.</p>${inclusions}</aside></div>`;
+  $('#package-back').onclick=()=>{const form=$('#event-registration-form');registrationView(1,{...draft,...Object.fromEntries(new FormData(form))});};
+  useForm($('#event-registration-form'),async form=>{const next=validateRegistration({...Object.fromEntries(new FormData(form)),type:draft.type});registrationView(3,next);window.scrollTo(0,0);});
+ }else{
+  content.innerHTML=`<div class="registration-layout"><form id="registration-confirm"><h2>Det bliver en god dag.</h2><p>Gennemse din testtilmelding, inden du bekræfter.</p><dl class="registration-details"><div><dt>Deltagelse</dt><dd>${chosen.name} · ${chosen.seats} ${chosen.seats===1?'deltager':'deltagere'}</dd></div><div><dt>Navn</dt><dd>${esc(draft.name)}</dd></div>${draft.type==='pair'?`<div><dt>Makker</dt><dd>${esc(draft.partner)}</dd></div>`:''}<div><dt>Mailadresse</dt><dd>${esc(draft.email)}</dd></div><div><dt>Mobilnummer</dt><dd>${esc(draft.phone)}</dd></div><div><dt>Pris ved rigtig tilmelding</dt><dd>${money(chosen.price)}</dd></div><div><dt>Til betaling i dag</dt><dd>0 kr. · test</dd></div></dl><label class="check-label"><input type="checkbox" name="test" required><span>Jeg forstår, at dette er en test. Oplysningerne gemmes kun i browserens session. Der sendes ingen mail, reserveres ingen plads og opkræves ingen betaling.</span></label><div class="registration-actions"><button class="text-button" type="button" id="details-back">← Ret oplysninger</button><button class="primary" type="submit">Bekræft testtilmelding →</button></div></form><aside class="registration-summary"><p class="eyebrow">Og så?</p><h2>${draft.type==='individual'?'Find din lykkemakker.':'Jeres makkerpar er klar.'}</h2><p>${draft.type==='individual'?'Efter testtilmeldingen kan du prøve at byde på en makker. I den endelige løsning får du først adgang, når de 10.000 kr. er betalt.':'I spiller som par. Tilmelding som par giver ikke adgang til at byde på en anden makker.'}</p><p class="help">En individuel deltager, der ikke vinder en auktion, får en makker sammensat af os. Vinderbud faktureres efter auktionens afslutning.</p></aside></div>`;
+  $('#details-back').onclick=()=>registrationView(2,draft);
+  useForm($('#registration-confirm'),async()=>{
+   const checked=validateRegistration(draft);
+   sessionStorage.setItem(registrationKey,JSON.stringify({...checked,test:true}));registration={...checked,test:true};demoLoggedIn=canTestBid(registration);
+   main.innerHTML=`<section class="registration registration-success"><p class="eyebrow">Testtilmelding gennemført</p><h1>${draft.type==='individual'?'Du er klar til et testbud.':'Jeres testpar er klar.'}</h1><p>${esc(draft.name)}${draft.type==='pair'?' & '+esc(draft.partner):''} · ${chosen.name}</p><p>Tak fordi du prøver flowet. Der er ikke reserveret en plads eller sendt en mail. Du har ikke betalt noget.</p>${draft.type==='individual'?'<a class="primary" href="/auktion?demo=1">Prøv makkerauktionen →</a>':'<a class="secondary" href="/auktion">Se makkerauktionen →</a>'}<p class="help">${draft.type==='individual'?'I den endelige løsning kræves betalt individuel deltagelse for at byde.':'Makkerauktionen er kun for individuelle deltagere.'}</p><button class="text-button" id="registration-reset">Nulstil testtilmelding</button></section>`;
+   $('#registration-reset').onclick=()=>{sessionStorage.removeItem(registrationKey);registration=null;demoLoggedIn=false;registrationView();};window.scrollTo(0,0);
+  });
+ }
+}
