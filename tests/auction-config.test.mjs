@@ -11,3 +11,8 @@ test('configuration requires a publishable key and rejects secret keys',()=>{
 test('configuration returns only the explicitly public key',()=>{
  process.env.AUCTIONS_ENABLED='true';process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_test';const r=response();handler({method:'GET'},r);assert.equal(r.statusCode,200);assert.equal(JSON.parse(r.body).key,'sb_publishable_test');assert.equal(r.headers['Cache-Control'],'no-store');
 });
+test('admin login can be enabled without enabling connected public auctions',()=>{
+ process.env.AUCTIONS_ENABLED='false';process.env.ADMIN_AUTH_ENABLED='true';
+ const auction=response();handler({method:'GET',url:'/api/auction-config'},auction);assert.equal(auction.statusCode,404);
+ const admin=response();handler({method:'GET',url:'/api/auction-config?context=admin'},admin);assert.equal(admin.statusCode,200);
+});

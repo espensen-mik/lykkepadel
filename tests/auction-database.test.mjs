@@ -85,3 +85,15 @@ test('Google admin migration requires a verified domain identity, OAuth session 
  await db.query(`update auth.identities set identity_data='{"email":"mikael@lykkeliga.dk","email_verified":false}' where user_id='${admin}'`);
  assert.equal(await isAdmin(),false);
 });
+test('email allowlist bootstraps only Mikaels verified Google account; other domain users stay denied',async()=>{
+ await db.exec(await readFile(new URL('../database/auction-google-domain-login.sql',import.meta.url),'utf8'));
+ await db.query(`delete from auction_private.admins where user_id='${admin}'`);
+ await db.query(`update auth.identities set identity_data='{"email":"mikael@lykkeliga.dk","email_verified":true}' where user_id='${admin}'`);
+ await db.exec(`select set_config('request.jwt.claims','{"amr":[{"method":"oauth"}]}',false)`);
+ assert.equal((await asUser(admin,()=>db.query('select public.auction_is_admin() as value'))).rows[0].value,true);
+ await db.query(`update auth.users set email='kollega@lykkeliga.dk' where id='${other}'`);
+ await db.query(`insert into auth.identities values('${other}','google','{"email":"kollega@lykkeliga.dk","email_verified":true}')`);
+ assert.equal((await asUser(other,()=>db.query('select public.auction_is_admin() as value'))).rows[0].value,false);
+ await db.exec(`select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false)`);
+ assert.equal((await asUser(admin,()=>db.query('select public.auction_is_admin() as value'))).rows[0].value,false);
+});

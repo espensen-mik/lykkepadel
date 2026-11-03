@@ -44,14 +44,15 @@ async function fetchLots(){
  const {data,error}=await client.from('auction_lots').select('*').order('created_at',{ascending:true});
  if(error)throw error;lots=data||[];
 }
-function accountLabel(){ $('#account').innerHTML=adminPage&&!demo&&!isAdmin?'Google Workspace login ↗':(demoLoggedIn?'Testbudgiver':user?'Min profil':'Log ind / Opret profil')+' <span aria-hidden="true">↗</span>'; }
+function accountLabel(){ $('#account').innerHTML=adminPage&&!demo&&!isAdmin?'Google-login ↗':(demoLoggedIn?'Testbudgiver':user?'Min profil':'Log ind / Opret profil')+' <span aria-hidden="true">↗</span>'; }
 async function googleLogin(){
  const {error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/administration',queryParams:{hd:'lykkeliga.dk',prompt:'select_account'}}});
  if(error)throw error;
 }
 function showAdminLogin(){
- modal(`<p class="eyebrow">Kun for LykkeLiga</p><h2>Velkommen på holdet.</h2><p>Brug din Google Workspace-konto på <strong>@lykkeliga.dk</strong>. Din konto skal også være tildelt administratoradgang.</p><form id="google-form"><button class="primary" type="submit">Log ind med Google ↗</button></form>${user?`<p class="help">Du er logget ind som ${esc(user.email)}, men denne session har ikke administratoradgang.</p>`:''}`);
+ modal(`<p class="eyebrow">Kun for LykkeLiga</p><h2>Velkommen på holdet.</h2><p>Brug din Google-konto på <strong>@lykkeliga.dk</strong>. Din konto skal også være tildelt administratoradgang.</p><form id="google-form"><button class="primary" type="submit">Log ind med Google ↗</button></form>${user?`<p class="help">Du er logget ind som ${esc(user.email)}, men denne session har ikke administratoradgang.</p><button class="secondary" id="admin-logout">Log ud</button>`:''}`);
  useForm($('#google-form'),async()=>googleLogin());
+ $('#admin-logout')?.addEventListener('click',async()=>{await client.auth.signOut();user=profile=null;isAdmin=false;dialog.close();await refresh();});
 }
 function showAccount(signup=false){
  if(adminPage&&!demo&&!isAdmin){showAdminLogin();return;}
@@ -122,7 +123,7 @@ function confirmBid(lot,amount){
  });
 }
 async function adminView(){
- if(!demo&&!isAdmin){main.innerHTML='<div class="empty"><p class="eyebrow">Kun for arrangører</p><h1>Administration</h1><p>Brug din Google Workspace-konto på @lykkeliga.dk. Kun udpegede administratorer har adgang.</p><button class="secondary" id="admin-login">Log ind med Google →</button></div>';$('#admin-login').onclick=showAdminLogin;return;}
+ if(!demo&&!isAdmin){main.innerHTML='<div class="empty"><p class="eyebrow">Kun for arrangører</p><h1>Administration</h1><p>Brug din Google-konto på @lykkeliga.dk. Kun udpegede administratorer har adgang.</p><button class="secondary" id="admin-login">Log ind med Google →</button></div>';$('#admin-login').onclick=showAdminLogin;return;}
  main.innerHTML=`<section class="admin"><div class="admin-head"><div><p class="eyebrow">Lykke Padel / Administration</p><h1>Bag om banen.</h1></div><button class="secondary" id="new-lot">Ny auktion +</button></div><p class="help">${demo?'Lokal testadministration. Ændringer gemmes kun i denne browsers session.':'Testmiljø. Auktioner med bud er låst for redigering. Start- og sluttider vises i dansk tid.'}</p><div class="tabs"><button data-tab="lots">Auktioner</button><button data-tab="people">Budgivere</button><button data-tab="winners">Vindere</button></div><div id="admin-body"></div><p class="admin-demo-link"><a href="${link()}">Se makkerauktionen →</a>${demo?' · <button class="text-button" id="reset-demo">Nulstil testdata</button>':''}</p></section>`;
  $('#new-lot').onclick=()=>editLot();
  document.querySelectorAll('[data-tab]').forEach(button=>{button.classList.toggle('active',button.dataset.tab===adminTab);button.onclick=()=>{adminTab=button.dataset.tab;adminView();};});
@@ -163,10 +164,11 @@ setInterval(()=>{document.querySelectorAll('[data-ends]').forEach(el=>el.textCon
 setInterval(async()=>{if(demo||!client||document.hidden||polling||dialog.open||adminPage)return;polling=true;try{const old=JSON.stringify(lots);await fetchLots();if(old!==JSON.stringify(lots))await render();}catch{toast('Kunne ikke opdatere bud. Din forbindelse kontrolleres igen om lidt.');}finally{polling=false;}},10000);
 async function start(){
  if(demo){$('#preview-banner').hidden=false;lots=readDemo();await render();return;}
- const response=await fetch('/api/auction-config');
+ const response=await fetch('/api/auction-config'+(adminPage?'?context=admin':''));
  if(response.status===404&&!adminPage){demo=true;$('#preview-banner').hidden=false;lots=readDemo();await render();return;}
  if(!response.ok){main.innerHTML='<div class="empty"><p class="eyebrow">Vi gør klar til første serv</p><h1>Auktionen er ikke åben endnu.</h1><p>Den offentlige forside er klar. Makkerauktionen kommer senere.</p><a href="/" class="secondary">Til forsiden →</a></div>';$('#account').hidden=true;return;}
  const config=await response.json();client=createClient(config.url,config.key);
+ if(adminPage){const authError=new URLSearchParams(location.hash.slice(1)).get('error_description')||new URLSearchParams(location.search).get('error_description');if(authError){history.replaceState(null,'','/administration');toast('Google-login kunne ikke gennemføres. Prøv igen eller kontakt arrangøren.');}}
  $('#preview-banner').textContent='TESTMILJØ · EKSEMPELPROFILER · INGEN BETALING ELLER FAKTURERING';$('#preview-banner').hidden=false;
  client.auth.onAuthStateChange(event=>{if(event==='PASSWORD_RECOVERY')setTimeout(showNewPassword,0);});
  await client.auth.getSession();await refresh();

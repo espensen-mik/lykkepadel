@@ -1,7 +1,8 @@
 export default function handler(req,res) {
  res.setHeader('Cache-Control','no-store');
  if(req.method!=='GET') {res.statusCode=405;res.end();return;}
- const enabled=process.env.AUCTIONS_ENABLED==='true';
+ const context=new URL(req.url||'/', 'http://localhost').searchParams.get('context');
+ const enabled=process.env.AUCTIONS_ENABLED==='true'||(context==='admin'&&process.env.ADMIN_AUTH_ENABLED==='true');
  if(!enabled) {res.statusCode=404;res.end(JSON.stringify({enabled:false}));return;}
  const url=process.env.SUPABASE_URL;
  const key=process.env.SUPABASE_PUBLISHABLE_KEY;
