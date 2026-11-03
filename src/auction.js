@@ -6,7 +6,9 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;
 const money=value=>new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(value);
 const date=value=>new Intl.DateTimeFormat('da-DK',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Copenhagen'}).format(new Date(value));
 let demo=new URLSearchParams(location.search).get('demo')==='1';
-const adminPage=location.pathname.startsWith('/administration');
+const adminPage=/^\/(admin|administration)\/?$/.test(location.pathname);
+// Keep the registered OAuth return URL compatible; show the short address after return.
+if(location.pathname.startsWith('/administration'))history.replaceState(null,'','/admin'+location.search+location.hash);
 const main=$('#main'), dialog=$('#modal');
 let client,user,profile,isAdmin=false,lots=[],sort='soon',adminTab='lots',polling=false,toastTimer;
 let demoLoggedIn=false;
@@ -19,7 +21,7 @@ const closed=lot=>new Date(lot.ends_at).getTime()<=Date.now();
 const minimum=lot=>lot.bid_count?lot.current_bid+500:lot.starting_price;
 function countdown(value){const ms=Math.max(0,new Date(value).getTime()-Date.now());if(!ms)return 'Auktionen er slut';const s=Math.floor(ms/1000);return `${Math.floor(s/86400)}d ${String(Math.floor(s/3600)%24).padStart(2,'0')}t ${String(Math.floor(s/60)%60).padStart(2,'0')}m ${String(s%60).padStart(2,'0')}s`;}
 function link(id){return `/auktion${demo?'?demo=1':''}${id?'#spiller/'+encodeURIComponent(id):''}`;}
-function adminLink(){return `/administration${demo?'?demo=1':''}`;}
+function adminLink(){return `/admin${demo?'?demo=1':''}`;}
 function modal(html){$('#modal-content').innerHTML=html;if(!dialog.open)dialog.showModal();}
 function errorHtml(message){return `<p class="error" role="alert">${esc(message)}</p>`;}
 function messageError(error){return error?.message||'Noget gik galt. Prøv igen.';}
@@ -168,7 +170,7 @@ async function start(){
  if(response.status===404&&!adminPage){demo=true;$('#preview-banner').hidden=false;lots=readDemo();await render();return;}
  if(!response.ok){main.innerHTML='<div class="empty"><p class="eyebrow">Vi gør klar til første serv</p><h1>Auktionen er ikke åben endnu.</h1><p>Den offentlige forside er klar. Makkerauktionen kommer senere.</p><a href="/" class="secondary">Til forsiden →</a></div>';$('#account').hidden=true;return;}
  const config=await response.json();client=createClient(config.url,config.key);
- if(adminPage){const authError=new URLSearchParams(location.hash.slice(1)).get('error_description')||new URLSearchParams(location.search).get('error_description');if(authError){history.replaceState(null,'','/administration');toast('Google-login kunne ikke gennemføres. Prøv igen eller kontakt arrangøren.');}}
+ if(adminPage){const authError=new URLSearchParams(location.hash.slice(1)).get('error_description')||new URLSearchParams(location.search).get('error_description');if(authError){history.replaceState(null,'','/admin');toast('Google-login kunne ikke gennemføres. Prøv igen eller kontakt arrangøren.');}}
  $('#preview-banner').textContent='TESTMILJØ · EKSEMPELPROFILER · INGEN BETALING ELLER FAKTURERING';$('#preview-banner').hidden=false;
  client.auth.onAuthStateChange(event=>{if(event==='PASSWORD_RECOVERY')setTimeout(showNewPassword,0);});
  await client.auth.getSession();await refresh();

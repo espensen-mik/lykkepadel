@@ -15,3 +15,23 @@ dialog{border:1px solid var(--line);padding:44px;width:min(520px,calc(100vw - 32
 @media(max-width:1000px){.hero{grid-template-columns:1fr 260px}.hero h1{font-size:100px}.grid{gap:35px 20px}.card h2{font-size:34px}.category{font-size:11px}.header-event{font-size:16px}.admin-row{grid-template-columns:55px 1fr 100px 90px}.admin-row>.status{display:none}.person-row{grid-template-columns:1fr 120px 110px}}
 @media(max-width:700px){.header{height:90px;margin-inline:6%}.header-logo{width:80px}.header-event{display:none}.text-button{font-size:15px}.hero{padding:45px 6% 35px;grid-template-columns:1fr;gap:25px}.hero h1{font-size:clamp(72px,14vw,100px);letter-spacing:-1px}.hero-copy{font-size:16px;max-width:100%}.hero-copy small{margin-top:10px}.auctions{padding:0 6% 45px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 16px}.portrait{aspect-ratio:3/4}.card-heading{display:block;margin-top:14px}.card h2{font-size:29px;margin-bottom:7px}.category{font-size:12px}.card-description{display:none}.bid-row{margin-top:13px;align-items:start;gap:10px}.price{font-size:25px}.bid-link{font-size:14px;white-space:nowrap;margin-top:18px}.caption{font-size:10px}.countdown{font-size:14px}.lot-number{top:10px;left:10px;font-size:11px;padding:5px 7px}.example-label{font-size:9px;left:8px;bottom:8px}.card-note{font-size:11px;line-height:1.6}.toolbar{gap:8px}.toolbar p{font-size:14px}.toolbar select{font-size:13px;max-width:145px}.manifesto{padding:35px 6%;display:block}.manifesto p{margin-top:20px;max-width:100%}footer{padding:30px 6%;flex-wrap:wrap;gap:18px}footer p{max-width:200px;margin:0}footer>span{width:100%}.detail{padding:25px 6% 45px}.detail-grid{grid-template-columns:1fr;gap:15px}.detail .portrait{aspect-ratio:4/3}.detail h1{font-size:64px}.detail-content{padding:15px 0}.detail-description{font-size:15px}.detail-meta{margin:22px 0}.bid-panel{padding:20px}dialog{padding:35px 24px}.admin{padding:35px 6%}.admin h1{font-size:52px}.admin-head{align-items:start}.admin-head .secondary{font-size:14px;padding:10px}.admin-row{grid-template-columns:44px 1fr 85px;gap:12px}.admin-row img{width:44px;height:60px}.admin-row .price{font-size:20px}.admin-row .secondary{grid-column:2/4}.person-row{grid-template-columns:1fr auto}.person-row .secondary{grid-column:auto}.form-pair{grid-template-columns:1fr}.preview-banner{font-size:10px;letter-spacing:.8px}}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.toolbar select{width:auto;flex-shrink:0}.header-logo{height:auto}
+
+/* Quiet, consistent controls inspired by the simple filled / outline reference. */
+.primary,.secondary,.text-button,.bid-link,.tabs button,.back{font-family:var(--body-font);font-size:14px;font-weight:600;line-height:1.4;letter-spacing:0}
+.primary,.secondary{min-height:48px;border-radius:8px;padding:13px 20px;gap:14px;transition:background-color .18s ease,border-color .18s ease,color .18s ease}
+.primary{background:var(--red);border-color:var(--red);box-shadow:none}
+.primary:hover:not(:disabled){background:#e82d20;border-color:#e82d20}
+.secondary{background:transparent;border-color:#c6b8a0;color:var(--ink)}
+.secondary:hover:not(:disabled){background:#f5efd4;border-color:var(--ink)}
+.text-button{color:var(--ink);padding:10px 0;background:transparent;transition:color .18s ease}
+.text-button:hover:not(:disabled),.back:hover{color:var(--red)}
+.text-button span{margin-left:10px}
+.bid-link{border:0;border-radius:7px;padding:10px 13px;background:var(--red);color:var(--cream);white-space:nowrap;transition:background-color .18s ease}
+.card-link:hover .bid-link{background:#e82d20}
+.step{min-width:48px;min-height:48px;padding:8px 14px;font-family:var(--body-font);font-weight:400;transition:background-color .18s ease}
+.step:hover:not(:disabled){background:#f5efd4}
+.step:first-child{border-radius:8px 0 0 8px}.step:last-child{border-radius:0 8px 8px 0}
+.tabs{gap:24px}.tabs button{padding:13px 0;transition:color .18s ease}.tabs button:hover{color:var(--red)}
+.close{width:40px;height:40px;border-radius:8px;line-height:1;transition:background-color .18s ease}.close:hover{background:#f5efd4}
+@media(max-width:700px){.text-button{font-size:13px}.bid-link{font-size:12px;padding:8px 10px;margin-top:15px}.bid-row{align-items:end}.admin-head .secondary{font-size:13px;padding:11px 14px}.tabs{gap:22px}}
+@media(prefers-reduced-motion:reduce){.primary,.secondary,.text-button,.bid-link,.step,.tabs button,.close{transition:none}}
