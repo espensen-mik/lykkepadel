@@ -5,7 +5,7 @@ const $=s=>document.querySelector(s);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(value);
 const date=value=>new Intl.DateTimeFormat('da-DK',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Copenhagen'}).format(new Date(value));
-const demo=new URLSearchParams(location.search).get('demo')==='1' && ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+let demo=new URLSearchParams(location.search).get('demo')==='1';
 const adminPage=location.pathname.startsWith('/administration');
 const main=$('#main'), dialog=$('#modal');
 let client,user,profile,isAdmin=false,lots=[],sort='soon',adminTab='lots',polling=false,toastTimer;
@@ -164,6 +164,7 @@ setInterval(async()=>{if(demo||!client||document.hidden||polling||dialog.open||a
 async function start(){
  if(demo){$('#preview-banner').hidden=false;lots=readDemo();await render();return;}
  const response=await fetch('/api/auction-config');
+ if(response.status===404&&!adminPage){demo=true;$('#preview-banner').hidden=false;lots=readDemo();await render();return;}
  if(!response.ok){main.innerHTML='<div class="empty"><p class="eyebrow">Vi gør klar til første serv</p><h1>Auktionen er ikke åben endnu.</h1><p>Den offentlige forside er klar. Makkerauktionen kommer senere.</p><a href="/" class="secondary">Til forsiden →</a></div>';$('#account').hidden=true;return;}
  const config=await response.json();client=createClient(config.url,config.key);
  $('#preview-banner').textContent='TESTMILJØ · EKSEMPELPROFILER · INGEN BETALING ELLER FAKTURERING';$('#preview-banner').hidden=false;
