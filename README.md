@@ -63,3 +63,9 @@ Aktivér `REGISTRATION_ENABLED=true` sammen med `SUPABASE_URL` og den offentlige
 `/tilmelding` gemmer tilmeldinger i Supabase efter mailbekræftelse. `Rabat` giver 100 % rabat; ingen anden betalingsmetode er åben. `/deltager` bruger engangskode på mail via Supabase Auth / Resend SMTP. Individuelle 0-kr.-tilmeldinger giver testbudadgang; par får to pladser uden budadgang. `/admin` viser Tilmeldinger, pladsantal og kuponstatus. Publicér kladdespillere før deltagere kan se dem på `/auktion`.
 
 Læs hele forløbet, databasereglerne og afgrænsningen af testen i [procesbeskrivelsen](docs/TILMELDING-OG-AUKTION.md). Mailtemplates bruger `{{ .Token }}`. Ingen Resend-nøgle i miljøfiler eller frontend.
+
+## Kommende forside
+
+`/forsidetest` er en separat, noindex-markeret forhåndsvisning med eventbeskrivelse, deltagelsespriser, tilmelding og tre udvalgte makkerauktioner. Den nuværende `/`-forside ændres ikke. Publicerede Supabase-auktioner hentes anonymt med de eksisterende RLS-regler; kladder vises aldrig. Er ingen auktioner publiceret, vises tre tydeligt markerede fiktive eksempelprofiler med links til browserdemoen. Linket til hele auktionen peger fortsat på `/auktion`.
+
+Tilmeldingsknapperne for de to kategorier forvælger henholdsvis `?type=individual` og `?type=pair`. Supabase er stadig autoritativ for kategori, pris, rabat og budadgang.

@@ -16,6 +16,7 @@ function shell(step){
 export async function mountEvent(connectedClient,{participant=false}={}){
  client=connectedClient;main=$('#main');document.title=participant?'Din deltagelse — Lykke Padel':'Tilmelding — Lykke Padel';const {data,error}=await client.auth.getUser();currentUser=error?null:data.user;
  try{draft=JSON.parse(sessionStorage.getItem(draftKey))||draft;}catch{}
+ const preferredType=new URLSearchParams(location.search).get('type');if(preferredType==='individual'||preferredType==='pair')draft.type=preferredType;
  if(currentUser){const {data:rows,error:loadError}=await client.from('event_registrations').select('*').eq('user_id',currentUser.id);if(loadError)throw loadError;if(rows.length){receipt(rows[0]);return;}draft.email=currentUser.email;}
  if(participant){login();return;}choose();
 }
