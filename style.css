@@ -71,3 +71,13 @@ address { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px 18px
   .organiser { width: 95px; margin-top: 18px; }
   footer { padding-block: 8px; }
 }
+
+/* Main sponsor stays part of the compact, single-screen landing composition. */
+.partners { display: flex; align-items: center; justify-content: center; gap: clamp(24px, 4vw, 48px); margin-top: clamp(24px, 4vh, 44px); flex-shrink: 0; }
+.partners .organiser { width: clamp(105px, 12vw, 145px); margin: 0; }
+.main-sponsor { display: flex; flex-direction: column; align-items: center; gap: 5px; padding-left: clamp(24px, 4vw, 48px); border-left: 1px solid #ff382830; }
+.main-sponsor span { font-size: 14px; line-height: 1; letter-spacing: 1.8px; color: #a75b50; }
+.main-sponsor img { filter: brightness(0); display: block; width: clamp(120px, 12vw, 150px); height: auto; }
+@media (prefers-reduced-motion: no-preference) { .main-sponsor { animation: gentle-arrival 850ms cubic-bezier(.22, 1, .36, 1) 500ms both; } }
+@media (max-width: 600px) { .partners { gap: 24px; margin-top: 28px; } .main-sponsor { padding-left: 24px; } .main-sponsor img { width: 124px; } }
+@media (max-height: 500px) and (min-width: 601px) { .partners { margin-top: 16px; } .partners .organiser { width: 95px; } .main-sponsor img { width: 105px; } .main-sponsor span { font-size: 12px; } }
