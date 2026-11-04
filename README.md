@@ -42,7 +42,7 @@ Installér projektets pakker med `npm ci` (Node.js 22 eller nyere). `npm run dev
 - `/` er uændret og har ingen links til auktionen.
 - `/auktion` er Supabase-tilsluttet testversion med login, profil og manuel godkendelse af budgivere.
 - `/admin` bruger Google-login med præcis @lykkeliga.dk-domænekontrol og en eksplicit administratorrolle/allowlist.
-- `/auktion?demo=1` og `/admin?demo=1` er design-/funktionstest, der også kan bruges på live-sitet. De bruger fiktive profiler, stockportrætter og sessionStorage, aldrig rigtige bud eller databaseændringer. Luk browserens session eller brug Nulstil testdata for at nulstille.
+- `/auktion?demo=1` og `/admin?demo=1` er design-/funktionstest, der også kan bruges på live-sitet. De bruger tre navngivne eksempelprofiler med lokale portrætter og sessionStorage, aldrig rigtige bud eller databaseændringer. Luk browserens session eller brug Nulstil testdata for at nulstille.
 
 Den lokale `.env.local` har `AUCTIONS_ENABLED=true` til test. På Vercel viser `/auktion` automatisk den tydeligt markerede browserdemo, når både event- og auktionsforbindelsen er deaktiveret (konfigurations-API svarer 404). `/admin` giver ikke administratoradgang via denne fallback. Demo-administration findes kun med `?demo=1` og arbejder udelukkende med browserens testdata. Ved senere Supabase-test angives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` og `AUCTIONS_ENABLED=true` i miljøvariabler og der laves ny deployment. API-nøglen i konfigurationen er kun publishable. Databasens RLS og administratorfunktioner er de egentlige adgangsregler, også hvis nogen kender API-adressen.
 
@@ -66,6 +66,6 @@ Læs hele forløbet, databasereglerne og afgrænsningen af testen i [procesbeskr
 
 ## Kommende forside
 
-`/forsidetest` er en separat, noindex-markeret forhåndsvisning med eventbeskrivelse, deltagelsespriser, tilmelding og tre udvalgte makkerauktioner. Den nuværende `/`-forside ændres ikke. Publicerede Supabase-auktioner hentes anonymt med de eksisterende RLS-regler; kladder vises aldrig. Er ingen auktioner publiceret, vises tre tydeligt markerede fiktive eksempelprofiler med links til browserdemoen. Linket til hele auktionen peger fortsat på `/auktion`.
+`/forsidetest` er en separat, noindex-markeret forhåndsvisning med eventbeskrivelse, deltagelsespriser, tilmelding og tre udvalgte makkerauktioner. Den nuværende `/`-forside ændres ikke. Siden viser de tre kuraterede eksempelprofiler Emil Lilleøre, Emil Okkels og Stig Tøfting med lokale portrætter, Instagram-links og links til browserdemoen. Ingen data publiceres i Supabase. Kilder findes i `docs/MAKKERE-KILDER.md`. Linket til hele auktionen peger fortsat på `/auktion`.
 
 Tilmeldingsknapperne for de to kategorier forvælger henholdsvis `?type=individual` og `?type=pair`. Supabase er stadig autoritativ for kategori, pris, rabat og budadgang.
