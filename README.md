@@ -44,7 +44,7 @@ Installér projektets pakker med `npm ci` (Node.js 22 eller nyere). `npm run dev
 - `/admin` bruger Google-login med præcis @lykkeliga.dk-domænekontrol og en eksplicit administratorrolle/allowlist.
 - `/auktion?demo=1` og `/admin?demo=1` er design-/funktionstest, der også kan bruges på live-sitet. De bruger fiktive profiler, stockportrætter og sessionStorage, aldrig rigtige bud eller databaseændringer. Luk browserens session eller brug Nulstil testdata for at nulstille.
 
-Den lokale `.env.local` har `AUCTIONS_ENABLED=true` til test. På Vercel viser `/auktion` automatisk den tydeligt markerede browserdemo, når Supabase-forbindelsen er deaktiveret (konfigurations-API svarer 404). `/admin` giver ikke administratoradgang via denne fallback. Demo-administration findes kun med `?demo=1` og arbejder udelukkende med browserens testdata. Ved senere Supabase-test angives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` og `AUCTIONS_ENABLED=true` i miljøvariabler og der laves ny deployment. API-nøglen i konfigurationen er kun publishable. Databasens RLS og administratorfunktioner er de egentlige adgangsregler, også hvis nogen kender API-adressen.
+Den lokale `.env.local` har `AUCTIONS_ENABLED=true` til test. På Vercel viser `/auktion` automatisk den tydeligt markerede browserdemo, når både event- og auktionsforbindelsen er deaktiveret (konfigurations-API svarer 404). `/admin` giver ikke administratoradgang via denne fallback. Demo-administration findes kun med `?demo=1` og arbejder udelukkende med browserens testdata. Ved senere Supabase-test angives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` og `AUCTIONS_ENABLED=true` i miljøvariabler og der laves ny deployment. API-nøglen i konfigurationen er kun publishable. Databasens RLS og administratorfunktioner er de egentlige adgangsregler, også hvis nogen kender API-adressen.
 
 Google-opsætning og første administrator: se `database/GOOGLE-ADMIN.md`. Den seneste SQL-opdatering er `auction-google-domain-login.sql`; den giver den verificerede Google-konto mikael@lykkeliga.dk administratoradgang efter første login. De tidligere Google-admin-filer er historik og skal ikke genkøres. `ADMIN_AUTH_ENABLED=true` aktiverer den rigtige adminforbindelse uden at skifte den offentlige auktion væk fra browserdemo. De fiktive eksempelauktioner ligger som kladder, indtil admin publicerer dem; auktioner med bud låses for redigering. Billeder indsættes som HTTPS-URL'er; upload kan tilføjes senere.
 
@@ -56,10 +56,10 @@ Kør `npm test` for lokale database- og konfigurationskontroller. Rigtig OAuth, 
 
 Den tidligere adresse `/administration` fører til `/admin`. Google-login bruger fortsat den allerede registrerede OAuth-returadresse `/administration`, som fører videre til `/admin`.
 
-## Eventtilmelding i test
+## Eventtilmelding med Supabase
 
-`/tilmelding` viser individuel deltagelse (10.000 kr., én plads) og par (25.000 kr., to pladser), kontaktoplysninger, gennemgang og testkvittering. Linket findes kun på auktionssiden; forsiden ændres ikke. Login- og adminlinks er fjernet fra den offentlige auktion. Admin åbnes via `/admin`.
+Aktivér `REGISTRATION_ENABLED=true` sammen med `SUPABASE_URL` og den offentlige `SUPABASE_PUBLISHABLE_KEY`. Kør `database/event-registration.sql` efter de eksisterende auktionsmigrationer (allerede anvendt på Lykke Padel-projektet).
 
-Testtilmeldingen gemmes kun i sessionStorage i samme fane. Ingen database, mail, betaling eller pladsreservation. Brug fiktive data. Kun individuel testtilmelding giver lokale testbud; par kan ikke byde. Databaseforbundne bud fra UI er midlertidigt stoppet, indtil betalingsadgang kan kontrolleres på serveren. De eksisterende databasefunktioner skal udvides med betalt individuel deltagelse før lancering.
+`/tilmelding` gemmer tilmeldinger i Supabase efter mailbekræftelse. `Rabat` giver 100 % rabat; ingen anden betalingsmetode er åben. `/deltager` bruger engangskode på mail via Supabase Auth / Resend SMTP. Individuelle 0-kr.-tilmeldinger giver testbudadgang; par får to pladser uden budadgang. `/admin` viser Tilmeldinger, pladsantal og kuponstatus. Publicér kladdespillere før deltagere kan se dem på `/auktion`.
 
-Det samlede forløb og de udestående integrationer er beskrevet i [docs/TILMELDING-OG-AUKTION.md](docs/TILMELDING-OG-AUKTION.md).
+Læs hele forløbet, databasereglerne og afgrænsningen af testen i [procesbeskrivelsen](docs/TILMELDING-OG-AUKTION.md). Mailtemplates bruger `{{ .Token }}`. Ingen Resend-nøgle i miljøfiler eller frontend.

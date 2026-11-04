@@ -1,40 +1,42 @@
-# Lykke Padel: deltagelse og makkerauktion
+# Lykke Padel: tilmelding og deltageradgang
 
-2. april 2027 · Pakhus 77, Aarhus · cirka 70 deltagende spillere.
+2. april 2027 · Pakhus 77, Aarhus. Forsiden er fortsat en selvstændig landing page uden tilmeldings- eller adminlinks.
 
-## Deltagelse
+## Flowet nu
 
-Individuel deltagelse koster 10.000 kr. for én deltager. LykkeLiga sammensætter en makker, medmindre deltageren vinder en makker i auktionen. Deltagelsesbeløbet skal være betalt, før der kan bydes. Makkerauktionen er et tilkøb; vinderbuddet erstatter ikke deltagelsesprisen.
+1. `/tilmelding`: vælg individuel deltagelse (10.000 kr., én plads) eller par (25.000 kr., to pladser). Begge inkluderer mad, forplejning, t-shirt, præmier, goodiebag og showkamp.
+2. Indtast navn, mail, mobil og faktureringsadresse. Par angiver også makkers navn. Der er én tilmelding pr. mailkonto.
+3. Rabatkoden `Rabat` giver 100 % rabat på begge kategorier. Supabase beregner pris, rabat og antal pladser; browseren kan ikke bestemme beløbet. Koden er ikke følsom og er beregnet til test. Uden gyldig kode kan flowet ikke afsluttes, da betaling endnu ikke er integreret.
+4. Gennemse oplysningerne og bekræft testtilmeldingen. Ikke-indloggede brugere får en personlig engangskode på mail fra `Lykke Padel <padel@forms.lykkeliga.dk>` via Supabase Auth og Resend SMTP. Koden indtastes på siden; ingen adgangskode skal vælges.
+5. Efter mailbekræftelse gemmes tilmeldingen i Supabase. Gentagen indsendelse af samme tilmelding giver samme reference og tæller ikke som en ny plads.
+6. Individuel deltagelse med bekræftet 0-kr.-tilmelding giver automatisk testbudadgang. Par har allerede en makker og får ikke budadgang. Databasen kontrollerer det ved hvert bud sammen med bekræftet mail og profilens godkendelsesstatus.
+7. `/deltager` viser tilmeldingen. På samme enhed huskes login; på en ny enhed bruges en ny engangskode. Adgang til deltagersiden findes fra tilmeldingssiden og når man forsøger at byde. Ingen login- eller admin-knap i auktionssidens navigation.
+8. `/admin` har en fane Tilmeldinger med kontaktoplysninger, rabat, status og pladsantal. Admin kan deaktivere `Rabat` for nye tilmeldinger og annullere en tilmelding. Annullering frigiver pladser og fjerner budadgang; eksisterende bud bevares. Adminadgang kræver fortsat Google og eksplicit LykkeLiga-administratoradgang.
 
-Deltagelse som par koster 25.000 kr. for to deltagere, der spiller sammen. Et par får ikke budadgang til makkerauktionen.
+## Hvad testen betyder
 
-Begge kategorier inkluderer mad, forplejning, t-shirt, præmier, goodiebag og showkamp om aftenen. Tilmeldingen er arrangementets primære charitybidrag.
+Der trækkes ingen penge, og testbud faktureres ikke. Tilmeldingerne og testbuddene gemmes reelt i Supabase og kan ses på tværs af enheder. En rabattilmelding registreres som `settlement=discount`, ikke som en kortbetaling. Der sendes login-/bekræftelsesmails, men endnu ingen separat tilmeldingskvittering.
 
-## Det planlagte forløb
+Kapaciteten er foreløbigt 70 pladser. Par bruger to pladser. Serveren tildeler pladser under en databaselås, så samtidige tilmeldinger ikke overbooker. Det skal afklares, om de 70 inkluderer de kendte/professionelle makkere, før den endelige kapacitet fastsættes. Rabat kan slås fra i admin uden at annullere allerede bekræftede tilmeldinger.
 
-1. Deltageren åbner Tilmeld dig fra auktionssiden og vælger individuel deltagelse eller et par. Den nuværende forside er fortsat en selvstændig landing page uden links til funktionerne.
-2. Deltageren indtaster navn, mail og mobil. Ved par indtastes også makkers navn. Ved rigtig lancering tilføjes relevante vilkår, privatlivsinformation og nødvendige faktureringsoplysninger. T-shirtstørrelser og kostbehov kan indsamles senere.
-3. Deltageren gennemser oplysninger og pris. En rigtig ordre oprettes på serveren med fast pris og antal pladser fra kategorien; klientens pris må aldrig være autoritativ.
-4. Senere: Quickpay håndterer betalingen via Clearhaus. Serveren verificerer den signerede callback og beløb/valuta/ordre, håndterer gentagne callbacks sikkert og registrerer først betalt status efter dokumenteret betaling. En browserretur fra Quickpay er ikke betalingsbevis. Betalingsreservation og capture skal afstemmes med den konkrete aftale, før flowet lanceres.
-5. Betalt individuel deltagelse knyttes til en bekræftet brugerkonto. Deltageren får en adgangsmail, fx gennem Resend, og kommer ind via et deltagerlink, uden en separat login-knap i sidens navigation. Admin har fortsat sit eget Google-login på /admin.
-6. Budadgang kræver serverkontrol af bekræftet bruger, betalt individuel deltagelse og eventuel arrangørgodkendelse. Par og ubetalte/annullerede deltagelser afvises af databasen, også ved direkte API-kald.
-7. Deltageren ser seneste bud, auktionens slutdato og beløbet, der mindst kan bydes. Bud hæves i trin på 500 kr. og bekræftes før afgivelse. Samtidige bud valideres atomisk i databasen mod serverens ur.
-8. Ved udløb fastlægges vinderen. Vi skal håndhæve én makker pr. individuel deltager: før lancering skal vi beslutte, om flere samtidige førende bud forhindres, eller hvordan flere sejre løses. Det er endnu ikke implementeret.
-9. Arrangøren fakturerer vinderbuddet særskilt. Deltagere uden auktionssejr får en makker sammensat af LykkeLiga. Automatisk fakturaudsendelse er ikke bygget.
+`/auktion` bruger nu Supabase, når `REGISTRATION_ENABLED=true`. Kun publicerede auktioner vises. Kladdespillere skal publiceres i admin, før deltagere kan se dem. `/auktion?demo=1` og `/admin?demo=1` er fortsat særskilte browserdemoer og deler ikke data med Supabase.
 
-## Testversionen nu
+## Database og sikkerhed
 
-/tilmelding er en browserprototype med kategorivalg, kontaktoplysninger, gennemgang og kvittering. Den gemmer kun den seneste testtilmelding i sessionStorage i den aktuelle fane. Brug fiktive data. Ingen database, mails, betaling, bindende tilmelding eller pladsreservation. Genindlæsning i samme fane bevarer testtilmeldingen; andre enheder deler den ikke.
+Migration: `database/event-registration.sql`, anvendt som `event_registration_discount_access` i projektet `iszexytxmdbcejjidfkm`.
 
-Individuel testtilmelding giver adgang til lokale testbud på /auktion?demo=1. Par kan se auktionerne, men kan ikke afgive testbud. Testens klientkontrol er kun en demonstration og kan ikke anvendes til at beskytte en rigtig auktion. Databaseforbundne bud fra den offentlige UI er sat på pause, indtil betalingskravet er implementeret. Eksisterende databasefunktioner har stadig den tidligere profilgodkendelse og skal udvides før offentlig åbning.
+- `public.event_registrations`: RLS og SELECT alene til ejer eller admin. Ingen direkte klient-INSERT/UPDATE/DELETE.
+- `auction_private.event_settings`: kapacitet, åben/lukket og kuponstatus; ingen direkte klientadgang.
+- `event_registration_quote`: kun en prisberegning, ingen personoplysninger.
+- `complete_event_registration`: kræver bekræftet, ikke-anonym konto; mail hentes fra auth.users. Pris og rabat valideres igen ved afslutning. Der tildeles aldrig pladser på baggrund af en browserkvittering.
+- `place_auction_bid`: kræver godkendt profil samt bekræftet individuel tilmelding, 0 kr. til betaling og rabatafregning. Par og gamle godkendte profiler uden eventtilmelding kan ikke omgå kravet via API.
+- Auktionslæsning tillader offentlige `live`-auktioner uden kontaktdata; kladder er kun for admin. Budgiveres kontaktdata og budhistorik er ikke offentlige.
+- Annullering og kuponændringer skrives i auditloggen. Ingen service-role-/Resend-nøgle sendes til browseren.
 
-Admin er ikke linket fra auktionssiden, tilmeldingen eller forsiden. /admin er stadig beskyttet med Google-login og eksplicit administratoradgang. At skjule links erstatter ikke adgangskontrol.
+Supabase Auth-mails har kodebaserede skabeloner for både Confirm sign up og Magic link or OTP. Resend-nøglen ligger krypteret i Supabase SMTP og er begrænset til afsendelse fra `forms.lykkeliga.dk`; den ligger ikke i repository eller Vercel-klientkonfigurationen.
 
-## Næste tekniske trin
+## Senere: betaling og rigtig auktion
 
-- Supabase-tabeller for tilmeldinger, deltagere, betalingsstatus og adgang til auktion. To pladser pr. par, én pr. individuel tilmelding. Adgangsregler og atomisk kapacitetskontrol for en endelig kapacitet skal være på serveren.
-- Quickpay-serverintegration, verificeret callback, betalingsudløb, dubletbeskyttelse og håndtering af afvist/refunderet betaling.
-- Resend til bekræftelse og deltageradgang. Ingen markedsføringsabonnement uden særskilt valg. Adgangsmails skal kunne gensendes uden at afsløre, hvem der er tilmeldt.
-- Adminoversigt over tilmeldinger, kapacitet og betalingsstatus; kontrolleret manuel testgodkendelse adskilt fra rigtig betalt status.
-- Opdatering af databasens budfunktion, så godkendt profil alene aldrig giver rigtig budadgang uden betalt individuel deltagelse.
-- Endelige regler for makkeroplevelsen, én auktionssejr pr. deltager, udebleven betaling, afbud og fakturering. Fastlæg også, om de cirka 70 spillere inkluderer pro-/kendisspillerne, før pladskapaciteten sættes.
+Quickpay/Clearhaus erstatter rabatafregningen med serververificeret betaling: fast serverpris, signeret callback, beløb/valuta-/ordrevalidering og dubletbeskyttelse. En browserretur er aldrig betalingsbevis. Betalingsstatus og refundering skal kunne tilbagekalde budadgang.
+
+Før en rigtig auktion åbnes mangler endelige deltagelses-/auktionsvilkår, privatlivstekst, separat kvittering, regler om afbud og manglende betaling, og beslutning om hvordan vi sikrer højst én vunden makker pr. deltager. Vinderbud kommer oveni deltagelsesprisen og skal senere faktureres særskilt. Deltagere uden auktionssejr får en makker sammensat af LykkeLiga. Automatisk fakturaudsendelse er ikke implementeret.

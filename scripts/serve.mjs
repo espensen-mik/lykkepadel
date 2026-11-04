@@ -15,7 +15,7 @@ createServer(async(req,res)=>{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/api/auction-config'){configHandler(req,res);return;}
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
-  const routes={'/':'index.html','/auktion':'auktion/index.html','/auktion/':'auktion/index.html','/tilmelding':'tilmelding/index.html','/tilmelding/':'tilmelding/index.html','/admin':'admin/index.html','/admin/':'admin/index.html','/administration':'administration/index.html','/administration/':'administration/index.html'};
+  const routes={'/':'index.html','/auktion':'auktion/index.html','/auktion/':'auktion/index.html','/deltager':'deltager/index.html','/deltager/':'deltager/index.html','/tilmelding':'tilmelding/index.html','/tilmelding/':'tilmelding/index.html','/admin':'admin/index.html','/admin/':'admin/index.html','/administration':'administration/index.html','/administration/':'administration/index.html'};
   const relative=routes[pathname]||pathname.slice(1);
   if(relative.split('/').some(part=>part.startsWith('.'))){res.writeHead(404).end();return;}
   const file=resolve(root,relative);

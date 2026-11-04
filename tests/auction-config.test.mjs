@@ -16,3 +16,10 @@ test('admin login can be enabled without enabling connected public auctions',()=
  const auction=response();handler({method:'GET',url:'/api/auction-config'},auction);assert.equal(auction.statusCode,404);
  const admin=response();handler({method:'GET',url:'/api/auction-config?context=admin'},admin);assert.equal(admin.statusCode,200);
 });
+
+test('registration enables participant config without exposing credentials on disabled routes',()=>{
+ process.env.AUCTIONS_ENABLED='false';process.env.ADMIN_AUTH_ENABLED='false';process.env.REGISTRATION_ENABLED='true';
+ const participant=response();handler({method:'GET',url:'/api/auction-config?context=participant'},participant);assert.equal(participant.statusCode,200);
+ const plain=response();handler({method:'GET',url:'/api/auction-config'},plain);assert.equal(plain.statusCode,404);
+ delete process.env.REGISTRATION_ENABLED;
+});
