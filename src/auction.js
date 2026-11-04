@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { initialLots } from './demo.js';
+import { enhanceSelects } from './select.js';
 import { packages,registrationKey,validateRegistration,readRegistration,canTestBid } from './registration.js';
 
 const $=s=>document.querySelector(s);
@@ -11,6 +12,9 @@ const adminPage=/^\/(admin|administration)\/?$/.test(location.pathname);
 // Keep the registered OAuth return URL compatible; show the short address after return.
 if(location.pathname.startsWith('/administration'))history.replaceState(null,'','/admin'+location.search+location.hash);
 const main=$('#main'), dialog=$('#modal');
+const pickerObserver=new MutationObserver(()=>enhanceSelects());
+pickerObserver.observe(main,{childList:true,subtree:true});
+pickerObserver.observe($('#modal-content'),{childList:true,subtree:true});
 let client,user,profile,isAdmin=false,lots=[],sort='soon',adminTab='lots',polling=false,toastTimer;
 let registration=readRegistration(sessionStorage);
 let demoLoggedIn=canTestBid(registration);

@@ -4,7 +4,7 @@
 /* Shared design system for auction, registration and administration only. */
 :root{
  --red:#ff3828;--accent:#c73627;--button:#d93425;--red-hover:#bd2b20;--cream:#fffce0;--paper:#fff;
- --wash:#faf9f6;--soft:#f7f5ed;--ink:#302d29;--muted:#696660;--line:#e8e6df;
+ --wash:#fffdf2;--soft:#fff9dd;--ink:#302d29;--muted:#696660;--line:#e7e2d0;
  --body-font:Inter,Arial,sans-serif;--radius:12px;--content:1200px;
  font-family:var(--body-font);font-size:16px;line-height:1.65;color:var(--ink);
  background:var(--wash);font-synthesis:none;
@@ -21,8 +21,8 @@ button:disabled{opacity:.5;cursor:wait}
 [hidden]{display:none!important}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .skip{position:absolute;top:-80px}.skip:focus{top:10px;z-index:20;background:white;padding:14px}
-.preview-banner{background:#f0eee8;color:#5c5952;padding:8px 20px;text-align:center;font:500 11px/1.5 var(--body-font);letter-spacing:.6px}
-.header{height:104px;padding:0 max(28px,calc((100% - var(--content))/2));display:flex;align-items:center;justify-content:space-between;gap:24px;background:var(--paper);border-bottom:1px solid var(--line)}
+.preview-banner{background:#f3edce;color:#5c5952;padding:8px 20px;text-align:center;font:500 11px/1.5 var(--body-font);letter-spacing:.6px}
+.header{height:104px;padding:0 max(28px,calc((100% - var(--content))/2));display:flex;align-items:center;justify-content:space-between;gap:24px;background:var(--cream);border-bottom:1px solid var(--line)}
 .header-logo{width:88px;height:auto;display:block}
 .header-event{font:500 13px/1.5 var(--body-font);color:var(--muted)}
 .header-event span{margin:0 14px;color:#c3beb4}
@@ -76,7 +76,7 @@ p{margin:0 0 16px}
 .countdown{font:500 13px/1.5 var(--body-font);display:block;margin-top:16px;font-variant-numeric:tabular-nums}
 .card-note{font:400 12px/1.6 var(--body-font);color:var(--muted);margin:5px 0 0}
 .ended{color:var(--muted)}
-.manifesto{background:#f1eee3;border-block:1px solid var(--line);padding:36px max(28px,calc((100% - var(--content))/2));display:flex;align-items:center;justify-content:space-between;gap:32px}
+.manifesto{background:var(--cream);border-block:1px solid var(--line);padding:36px max(28px,calc((100% - var(--content))/2));display:flex;align-items:center;justify-content:space-between;gap:32px}
 .manifesto h2{font:36px/1.1 Bebas,sans-serif;color:var(--red);margin:0}
 .manifesto p{font-size:14px;color:var(--muted);margin:0}
 footer{padding:32px max(28px,calc((100% - var(--content))/2));display:flex;align-items:center;justify-content:space-between;gap:28px;background:white;border-top:1px solid var(--line)}
@@ -164,7 +164,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--red)}
 .package-price{font:600 32px/1.25 var(--body-font);letter-spacing:-1px;color:var(--ink);display:block}
 .package-description{font:400 15px/1.75 var(--body-font);color:var(--muted);flex:1}
 .package-choice{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:18px;font:600 14px/1.5 var(--body-font);color:var(--accent)}
-.package-option input:checked+.package-inner{border-color:var(--red);background:#fffdfa}
+.package-option input:checked+.package-inner{border-color:var(--red);background:#fff9e5}
 .package-option input:focus-visible+.package-inner{outline:2px solid var(--red);outline-offset:4px}
 .included{padding:26px 28px;background:var(--soft);border-radius:var(--radius);margin-top:4px}
 .included h2{font-size:20px;margin-bottom:10px}.included p{font-size:14px;color:var(--muted);margin-bottom:10px}.included p:last-child{margin:0}
@@ -211,3 +211,14 @@ input[type=checkbox],input[type=radio]{accent-color:var(--red)}
 @media(max-width:540px){.grid{grid-template-columns:1fr;gap:24px}.card .portrait{aspect-ratio:5/4}.card-body{padding:22px}.card-heading{flex-direction:row;justify-content:space-between;align-items:center;gap:16px}.card h2{font-size:32px}.category{font-size:12px;flex-shrink:0}.card-description{-webkit-line-clamp:3}.card .price{font-size:24px}.bid-link{font-size:14px}.card .countdown{font-size:13px}}
 @media(prefers-reduced-motion:no-preference){.hero h1,.registration-heading{animation:appear .65s cubic-bezier(.2,.8,.2,1) both}.card{animation:appear .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*45ms)}@keyframes appear{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* Branded pickers, including the open menu, across public pages and admin. */
+.select-control{position:relative;min-width:0;width:100%}
+.select-trigger{display:flex;align-items:center;justify-content:space-between;gap:24px;width:100%;min-height:48px;padding:12px 14px;border:1px solid #d7d0b9;border-radius:8px;background:white;color:var(--ink);font:500 14px/1.5 var(--body-font);text-align:left;cursor:pointer;transition:border-color .18s,background .18s}
+.select-trigger::after{content:'';width:8px;height:8px;flex-shrink:0;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .18s;color:var(--accent)}
+.select-trigger:hover{background:#fffdf5;border-color:#b9ad89}.select-control.open .select-trigger{border-color:var(--accent)}.select-control.open .select-trigger::after{transform:translateY(2px) rotate(225deg)}
+.select-menu{position:absolute;top:calc(100% + 7px);left:0;min-width:100%;width:max-content;max-width:min(320px,85vw);max-height:240px;overflow:auto;padding:6px;background:white;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px #493a2020;z-index:5;font:400 14px/1.5 var(--body-font)}
+.select-menu [role=option]{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:11px 12px;border-radius:5px;cursor:pointer;white-space:nowrap}
+.select-menu [role=option]:hover,.select-menu [role=option]:focus{background:var(--cream);outline:none}.select-menu [aria-selected=true]{color:var(--accent);font-weight:600}.select-menu [aria-selected=true]::after{content:'✓';font-size:14px}.select-menu [aria-disabled=true]{opacity:.45;cursor:default}
+.toolbar .select-control{width:180px;flex-shrink:0}.toolbar .select-trigger{min-height:44px;padding-block:10px}.toolbar .select-menu{left:auto;right:0}
+@media(max-width:700px){.toolbar .select-control{width:158px}.select-trigger{gap:14px}.toolbar .select-trigger{font-size:13px}}
