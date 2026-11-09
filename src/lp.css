@@ -330,6 +330,19 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-lot__link:hover .lp-lot__media img, .lp-player:hover .lp-lot__media img { transform: scale(1.03); }
 }
 
+
+/* Talfelt med egne −/+ knapper i stedet for browserens pile */
+.lp-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.lp-input[type="number"]::-webkit-inner-spin-button, .lp-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.lp-stepper { display: flex; align-items: center; gap: 10px; }
+.lp-stepper .lp-input { flex: 1; min-width: 0; text-align: center; }
+.lp-stepper__btn { flex: none; width: 56px; height: 56px; border-radius: var(--radius-pill); border: 3px solid var(--red-deep); background: transparent; color: var(--red-text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.lp-stepper__btn:hover { background: var(--red-deep); color: var(--cream); }
+@media (prefers-reduced-motion: no-preference) {
+  .lp-stepper__btn { transition: background-color 200ms var(--ease), color 200ms var(--ease), transform 120ms var(--ease); }
+  .lp-stepper__btn:active { transform: scale(.94); }
+}
+
 /* Dialog og toast */
 .lp-dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 0; border: 0; background: var(--cream); color: var(--ink); box-shadow: none; }
 .lp-dialog::backdrop { background: rgba(43, 21, 19, .72); }
