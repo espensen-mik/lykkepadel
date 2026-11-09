@@ -1,14 +1,66 @@
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=v=>new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(v);
-export async function eventAdminView(client,{modal,useForm,toast,refresh}){
- const body=document.querySelector('#admin-body');
- const [{data:rows,error},{data:settings,error:settingsError}]=await Promise.all([client.from('event_registrations').select('*').order('created_at',{ascending:false}),client.rpc('event_admin_settings')]);
- if(error||settingsError){body.innerHTML=`<p class="error">${esc((error||settingsError).message)}</p>`;return;}
- body.innerHTML=`<div class="event-admin-summary"><div><p class="eyebrow">Deltagere</p><strong>${settings.seats_taken} / ${settings.capacity} pladser</strong><p class="help">Par tæller som to deltagere.</p></div><div><p class="eyebrow">Midlertidig rabatkode</p><strong>Rabat · ${settings.coupon_active?'aktiv':'deaktiveret'}</strong><button class="secondary" id="toggle-coupon">${settings.coupon_active?'Deaktivér':'Aktivér'} rabatkode</button></div></div><div class="event-registration-list">${rows.length?rows.map(r=>`<article class="event-registration-row"><div><h2>${esc(r.full_name)}${r.partner_name?' & '+esc(r.partner_name):''}</h2><p>${esc(r.email)} · ${esc(r.phone)}</p><p>${esc(r.billing_address)}</p><p class="help">${new Date(r.created_at).toLocaleDateString('da-DK')} · Ref. ${esc(r.id.slice(0,8).toUpperCase())}</p></div><div><span class="status">${r.status==='confirmed'?'Bekræftet':'Annulleret'}</span><p>${r.kind==='individual'?'Individuel · 1 plads':'Par · 2 pladser'}</p><p class="help">${money(r.base_price)} − ${money(r.discount_amount)} rabat<br>Til betaling: ${money(r.amount_due)}</p></div>${r.status==='confirmed'?`<button class="secondary" data-cancel-registration="${esc(r.id)}">Annullér</button>`:''}</article>`).join(''):'<div class="empty"><p>Ingen tilmeldinger endnu. Nye tilmeldinger vises her, når mail og rabat er bekræftet.</p></div>'}</div>`;
- document.querySelector('#toggle-coupon').onclick=async e=>{e.currentTarget.disabled=true;const {error}=await client.rpc('event_admin_settings',{p_coupon:!settings.coupon_active});if(error){toast(error.message);e.currentTarget.disabled=false;return;}await refresh();};
- document.querySelectorAll('[data-cancel-registration]').forEach(button=>button.onclick=()=>{
-  const r=rows.find(r=>r.id===button.dataset.cancelRegistration);
-  modal(`<h2>Annullér tilmelding?</h2><p>${esc(r.full_name)} · ${r.seats} ${r.seats===1?'plads':'pladser'}</p><p>Tilmeldingen beholdes i oversigten, men pladserne frigives og budadgangen fjernes. Eksisterende bud slettes ikke.</p><form id="cancel-registration-form"><button class="primary" type="submit">Annullér tilmelding</button></form>`);
-  useForm(document.querySelector('#cancel-registration-form'),async()=>{const {error}=await client.rpc('cancel_event_registration',{p_id:r.id});if(error)throw error;document.querySelector('#modal').close();await refresh();toast('Tilmeldingen er annulleret.');});
- });
+import { $, esc, money, toast, modal, closeModal, useForm, errorHtml } from './ui.js';
+
+// Admin tab: event registrations, capacity and the temporary discount code.
+export async function eventAdminView(client, { refresh }) {
+  const body = $('#admin-body');
+  const [{ data: rows, error }, { data: settings, error: settingsError }] = await Promise.all([
+    client.from('event_registrations').select('*').order('created_at', { ascending: false }),
+    client.rpc('event_admin_settings'),
+  ]);
+  if (error || settingsError) {
+    body.innerHTML = errorHtml((error || settingsError).message);
+    return;
+  }
+
+  body.innerHTML = `
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px">
+    <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Tilmeldte pladser</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${settings.seats_taken} / ${settings.capacity}</p><p class="lp-help">Makkerpar tæller som to pladser.</p></div>
+    <div class="lp-panel" style="gap: 10px; padding: 22px"><p class="lp-lot__meta">Rabatkoden "Rabat"</p><p style="margin: 0; font: 400 32px/1 var(--font-display)">${settings.coupon_active ? 'Aktiv' : 'Slået fra'}</p><div><button class="lp-btn lp-btn--secondary lp-btn--small" type="button" id="toggle-coupon" style="border-width: 3px">${settings.coupon_active ? 'Slå rabatkoden fra' : 'Slå rabatkoden til'}</button></div></div>
+  </div>
+  ${rows.length
+    ? `<div class="lp-tablebox"><table class="lp-table">
+      <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col" class="num">Betalt</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
+      <tbody>${rows
+        .map(
+          (r) => `<tr>
+        <td><strong>${esc(r.full_name)}</strong>${r.partner_name ? `<br><span class="lp-help">& ${esc(r.partner_name)}</span>` : ''}<br><span class="lp-help">Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</span></td>
+        <td>${esc(r.email)}<br>${esc(r.phone)}<br><span class="lp-help">${esc(r.billing_address)}</span></td>
+        <td>${r.kind === 'individual' ? 'Individuel · 1 plads' : 'Makkerpar · 2 pladser'}</td>
+        <td class="num">${money(r.amount_due)}<br><span class="lp-help">${money(r.discount_amount)} rabat</span></td>
+        <td>${r.status === 'confirmed' ? '<span class="lp-pill lp-pill--lead">Bekræftet</span>' : '<span class="lp-pill lp-pill--quiet">Annulleret</span>'}</td>
+        <td>${new Date(r.created_at).toLocaleDateString('da-DK')}</td>
+        <td>${r.status === 'confirmed' ? `<button class="lp-btn--text" type="button" data-cancel="${esc(r.id)}">Annuller</button>` : ''}</td>
+      </tr>`,
+        )
+        .join('')}</tbody></table></div>`
+    : '<div class="lp-empty"><p class="lp-text">Ingen tilmeldinger endnu. Nye tilmeldinger vises her, når mail og rabatkode er bekræftet.</p></div>'}`;
+
+  $('#toggle-coupon').onclick = async (event) => {
+    event.currentTarget.disabled = true;
+    const { error: toggleError } = await client.rpc('event_admin_settings', { p_coupon: !settings.coupon_active });
+    if (toggleError) {
+      toast(toggleError.message);
+      event.currentTarget.disabled = false;
+      return;
+    }
+    await refresh();
+  };
+
+  body.querySelectorAll('[data-cancel]').forEach((button) => {
+    button.onclick = () => {
+      const r = rows.find((row) => row.id === button.dataset.cancel);
+      modal(`<h2 id="modal-title">Annuller tilmelding?</h2>
+        <p class="lp-text">${esc(r.full_name)} · ${r.seats} ${r.seats === 1 ? 'plads' : 'pladser'}</p>
+        <p class="lp-help">Tilmeldingen bliver i oversigten, men pladserne frigives, og budadgangen fjernes. Eksisterende bud slettes ikke.</p>
+        <form id="cancel-form" class="lp-actions"><button class="lp-btn lp-btn--primary" type="submit">Annuller tilmelding</button><button class="lp-btn lp-btn--secondary" type="button" id="cancel-keep">Behold</button></form>`);
+      $('#cancel-keep').onclick = closeModal;
+      useForm($('#cancel-form'), async () => {
+        const { error: cancelError } = await client.rpc('cancel_event_registration', { p_id: r.id });
+        if (cancelError) throw cancelError;
+        closeModal();
+        await refresh();
+        toast('Tilmeldingen er annulleret.');
+      });
+    };
+  });
 }

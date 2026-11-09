@@ -1,63 +1,334 @@
-import {packages,validateRegistration} from './registration.js';
-const $=s=>document.querySelector(s);
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=v=>new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',maximumFractionDigits:0}).format(v);
-const draftKey='lykke-event-draft-v2';
-const includes='Mad & forplejning · T-shirt · Præmier · Goodiebag · Showkamp om aftenen';
-let client,currentUser,main,draft={type:'individual'},quote;
-function saveDraft(){sessionStorage.setItem(draftKey,JSON.stringify(draft));}
-function errorNode(form,error){form.querySelector('.error')?.remove();const p=document.createElement('p');p.className='error';p.role='alert';p.textContent=error?.message||'Noget gik galt. Prøv igen.';form.append(p);}
-function formAction(selector,action){$(selector).onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('[type=submit]');button.disabled=true;form.querySelector('.error')?.remove();try{await action(form);}catch(error){errorNode(form,error);}finally{button.disabled=false;}};}
-function value(form,key){return String(new FormData(form).get(key)||'').trim();}
-function shell(step){
- main.innerHTML=`<section class="registration"><a class="back" href="/auktion">← Til makkerauktionen</a><div class="registration-heading"><p class="eyebrow">2. april 2027 / Pakhus 77, Aarhus</p><h1>En plads på banen.<br>En forskel for andre.</h1><p>Vælg din deltagelse. Alt er inkluderet, og du spiller for mere lykke.</p></div><ol class="registration-steps" aria-label="Tilmeldingens trin">${['Deltagelse','Oplysninger','Bekræftelse'].map((t,i)=>`<li ${i+1===step?'aria-current="step"':''}><span>${i+1}</span>${t}</li>`).join('')}</ol><div id="event-content"></div></section>`;
- window.scrollTo(0,0);return $('#event-content');
+import { packages, validateRegistration } from './registration.js';
+import { $, esc, money, field, errorHtml, errorMessage, setHeader } from './ui.js';
+
+// Registration (/tilmelding) and the participant page (/deltager), backed by Supabase.
+const DRAFT_KEY = 'lykke-event-draft-v2';
+const INCLUDES = 'turnering, forplejning, T-shirt og goodiebag, præmier, networking, synlighed i forbindelse med eventet samt VIP-adgang til etape 2';
+const LABELS = { individual: 'Individuel', pair: 'Makkerpar' };
+const DESCRIPTIONS = {
+  individual:
+    'Du køber én plads i turneringen, og vi matcher dig med en makker på dit niveau. Du får desuden adgang til onlineauktionen, hvor du kan byde på en professionel eller kendt profil som makker.',
+  pair: 'I tilmelder jer som fast makkerpar og spiller hele turneringen sammen. I kan repræsentere én virksomhed eller gå sammen på tværs af to, og I bliver præsenteret som officielt makkerpar. Makkerpar kan ikke byde på auktionen.',
+};
+
+let client;
+let currentUser;
+let main;
+let draft = { type: 'individual' };
+let quote;
+
+function saveDraft() {
+  sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 }
-export async function mountEvent(connectedClient,{participant=false}={}){
- client=connectedClient;main=$('#main');document.title=participant?'Din deltagelse — Lykke Padel':'Tilmelding — Lykke Padel';const {data,error}=await client.auth.getUser();currentUser=error?null:data.user;
- try{draft=JSON.parse(sessionStorage.getItem(draftKey))||draft;}catch{}
- const preferredType=new URLSearchParams(location.search).get('type');if(preferredType==='individual'||preferredType==='pair')draft.type=preferredType;
- if(currentUser){const {data:rows,error:loadError}=await client.from('event_registrations').select('*').eq('user_id',currentUser.id);if(loadError)throw loadError;if(rows.length){receipt(rows[0]);return;}draft.email=currentUser.email;}
- if(participant){login();return;}choose();
+
+// Disable the submit button while the action runs and show errors below the form.
+function formAction(selector, action) {
+  $(selector).onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('[type=submit]');
+    button.disabled = true;
+    form.querySelector('.lp-error')?.remove();
+    try {
+      await action(form);
+    } catch (error) {
+      form.insertAdjacentHTML('beforeend', errorHtml(errorMessage(error)));
+    } finally {
+      button.disabled = false;
+    }
+  };
 }
-function choose(){
- const content=shell(1);
- content.innerHTML=`<form id="choose-event"><fieldset class="package-options"><legend class="sr-only">Vælg deltagelse</legend>${Object.entries(packages).map(([key,p])=>`<label class="package-option"><input type="radio" name="type" value="${key}" ${draft.type===key?'checked':''}><span class="package-inner"><span class="eyebrow">${p.seats} ${p.seats===1?'deltager':'deltagere · ét par'}</span><strong>${p.name}</strong><span class="package-price">${money(p.price)}</span><span class="package-description">${key==='individual'?'Vi sammensætter dig med en makker, eller du kan byde på en kendt eller professionel spiller i makkerauktionen.':'I tilmelder jer som et fast par og spiller sammen. Par deltager ikke i makkerauktionen.'}</span><span class="package-choice">Vælg deltagelse <span aria-hidden="true">→</span></span></span></label>`).join('')}</fieldset><div class="included"><h2>Hele oplevelsen er med.</h2><p>${includes}</p><p class="help">En eventuel makkerauktion betales særskilt. Tilmeldingen er arrangementets primære charitybidrag.</p></div><div class="registration-actions"><p class="help">Vi tester tilmeldingen med rabatkode. Betaling er endnu ikke åbnet.</p><button class="primary" type="submit">Fortsæt →</button></div></form><p class="form-switch"><a href="/deltager">Allerede tilmeldt? Åbn din deltagerside →</a></p>`;
- formAction('#choose-event',async form=>{draft.type=value(form,'type');saveDraft();details();});
+
+function progress(step) {
+  const names = ['Deltagelse', 'Oplysninger', 'Bekræft'];
+  return `<ol class="lp-progress" aria-label="Trin">${names
+    .map((name, i) => {
+      const n = i + 1;
+      const state = n < step ? 'is-done' : n === step ? 'is-current' : '';
+      return `<li class="${state}" ${n === step ? 'aria-current="step"' : ''}><b>${n}</b>${name}</li>`;
+    })
+    .join('')}</ol>`;
 }
-function details(){
- const p=packages[draft.type],content=shell(2);
- content.innerHTML=`<div class="registration-layout"><form id="event-details"><h2>Hvem kommer på banen?</h2><p class="help">Din mailadresse bliver din deltagerkonto. Vi bekræfter den med en engangskode før tilmeldingen gemmes.</p><label>Fuldt navn<input name="name" autocomplete="name" minlength="2" maxlength="120" value="${esc(draft.name)}" required></label><label>Mailadresse<input name="email" type="email" autocomplete="email" maxlength="254" value="${esc(currentUser?.email||draft.email)}" ${currentUser?'readonly':''} required></label><label>Mobilnummer<input name="phone" type="tel" autocomplete="tel" minlength="6" maxlength="30" value="${esc(draft.phone)}" required></label><label>Faktureringsadresse<textarea name="address" autocomplete="street-address" minlength="5" maxlength="500" required>${esc(draft.address)}</textarea></label>${draft.type==='pair'?`<label>Din makkers fulde navn<input name="partner" minlength="2" maxlength="120" value="${esc(draft.partner)}" required></label>`:''}<label>Rabatkode<input name="code" autocomplete="off" maxlength="80" value="${esc(draft.code)}" placeholder="Har du en rabatkode?"></label><p class="help">T-shirtstørrelse og kostbehov indsamler vi senere.</p><div class="registration-actions"><button class="text-button" id="choose-back" type="button">← Vælg deltagelse</button><button class="primary" type="submit">Se din tilmelding →</button></div></form><aside class="registration-summary"><p class="eyebrow">Din deltagelse</p><h2>${p.name}</h2><p>${p.seats} ${p.seats===1?'plads':'pladser'}</p><strong class="package-price">${money(p.price)}</strong><p>${includes}</p><p class="help">Rabat beregnes, når du fortsætter. Kun tilmeldinger til 0 kr. kan gennemføres, indtil betaling åbner.</p></aside></div>`;
- $('#choose-back').onclick=()=>{draft={...draft,...Object.fromEntries(new FormData($('#event-details')))};saveDraft();choose();};
- formAction('#event-details',async form=>{
-  const fields=Object.fromEntries(new FormData(form));draft={...validateRegistration({...fields,type:draft.type}),address:value(form,'address'),code:value(form,'code')};
-  if(draft.address.length<5)throw new Error('Udfyld din faktureringsadresse.');saveDraft();
-  const {data,error}=await client.rpc('event_registration_quote',{p_kind:draft.type,p_code:draft.code});if(error)throw error;quote=data;review();
- });
+
+function shell(step, title, { back } = {}) {
+  main.innerHTML = `<div class="lp-wrap" style="padding-block: 48px var(--space-9); display: flex; flex-direction: column; gap: 36px">
+    ${back ? `<a class="lp-back" href="${back.href}" id="shell-back">← ${back.label}</a>` : ''}
+    ${step ? progress(step) : ''}
+    <h1 class="lp-display lp-display--m">${title}</h1>
+    <div id="event-content"></div>
+  </div>`;
+  window.scrollTo(0, 0);
+  return $('#event-content');
 }
-function review(){
- const content=shell(3),p=packages[draft.type];
- content.innerHTML=`<div class="registration-layout"><form id="event-confirm"><h2>Din tilmelding</h2><dl class="registration-details">${[['Deltagelse',p.name],['Navn',draft.name],...(draft.type==='pair'?[['Makker',draft.partner]]:[]),['Mailadresse',draft.email],['Mobil',draft.phone],['Faktureringsadresse',draft.address],['Deltagelsespris',money(quote.base_price)],['Rabat',money(quote.discount_amount)],['Til betaling',money(quote.amount_due)]].map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><label class="check-label"><input name="confirm" type="checkbox" required><span>Jeg ønsker at gemme denne testtilmelding hos LykkeLiga. Oplysningerne bruges til deltagelse og auktionsadgang. Rabatten giver en tilmelding til 0 kr.; der trækkes ingen penge. Testauktionens bud medfører ingen fakturering.</span></label><div class="registration-actions"><button class="text-button" id="details-back" type="button">← Ret oplysninger</button><button class="primary" type="submit">${currentUser?'Bekræft tilmelding':'Bekræft mail og tilmeld'} →</button></div></form><aside class="registration-summary"><p class="eyebrow">Og så?</p><h2>${draft.type==='individual'?'Find din lykkemakker.':'Jeres makkerpar er klar.'}</h2><p>${draft.type==='individual'?'Når tilmeldingen er bekræftet til 0 kr., får din konto automatisk adgang til testauktionen.':'I får to pladser som fast par. Jeres konto får ikke budadgang til makkerauktionen.'}</p><p class="help">Tilmeldingen gemmes i Supabase. Du kan vende tilbage via din mailadresse uden at vælge en adgangskode.</p></aside></div>`;
- $('#details-back').onclick=details;
- formAction('#event-confirm',async()=>{if(quote.amount_due!==0)throw new Error('Betaling er ikke åbnet. Tilføj en gyldig rabatkode for at gennemføre testen.');if(currentUser)await complete();else await sendCode(draft.email,true,complete);});
+
+export async function mountEvent(connectedClient, { participant = false } = {}) {
+  client = connectedClient;
+  main = $('#main');
+  document.title = participant ? 'Min side – Lykke Padel' : 'Tilmelding – Lykke Padel';
+  // On /tilmelding the signup button would point to the page itself.
+  setHeader({ loginText: 'Log ind', showSignup: participant });
+  const { data, error } = await client.auth.getUser();
+  currentUser = error ? null : data.user;
+  try {
+    draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY)) || draft;
+  } catch {}
+  const preferred = new URLSearchParams(location.search).get('type');
+  if (preferred === 'individual' || preferred === 'pair') draft.type = preferred;
+  if (currentUser) {
+    const { data: rows, error: loadError } = await client.from('event_registrations').select('*').eq('user_id', currentUser.id);
+    if (loadError) throw loadError;
+    if (rows.length) return receipt(rows[0]);
+    draft.email = currentUser.email;
+  }
+  if (participant) return login();
+  choose();
 }
-async function complete(){
- const {data,error}=await client.rpc('complete_event_registration',{p_kind:draft.type,p_name:draft.name,p_phone:draft.phone,p_address:draft.address,p_partner:draft.partner||'',p_code:draft.code,p_terms:'registration-test-v1'});
- if(error)throw error;sessionStorage.removeItem(draftKey);receipt(data);
+
+// Step 1: choose individual or pair.
+function choose() {
+  const content = shell(1, 'En plads på banen.<br>En forskel for andre.');
+  content.innerHTML = `<form id="choose-event" class="lp-form" style="gap: 32px">
+    <fieldset style="border: 0; margin: 0; padding: 0">
+      <legend style="padding: 0; margin-bottom: 20px; font: 800 22px var(--font-body)">Hvordan vil du deltage?</legend>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px">
+        ${Object.entries(packages)
+          .map(
+            ([key, p]) => `<label class="lp-choice ${draft.type === key ? 'is-selected' : ''}">
+          <input type="radio" name="type" value="${key}" ${draft.type === key ? 'checked' : ''}>
+          <span class="lp-price__meta" ${key === 'pair' ? 'style="color: var(--ink-muted)"' : ''}>${key === 'individual' ? '1 spiller · kan byde på makkere' : '2 spillere · fast makkerpar'}</span>
+          <span class="lp-price__name" style="font-size: 44px">${LABELS[key]}</span>
+          <span class="lp-price__amount">${money(p.price)}</span>
+          <span style="font-size: 16px; line-height: 1.55">${DESCRIPTIONS[key]}</span>
+        </label>`,
+          )
+          .join('')}
+      </div>
+    </fieldset>
+    <div class="lp-section-head" style="padding-top: 24px; border-top: 2px solid var(--ink)">
+      <p class="lp-text" style="font-size: 16px; max-width: 760px"><strong>Begge inkluderer:</strong> ${INCLUDES}.</p>
+      <button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Fortsæt</button>
+    </div>
+    <p class="lp-help">Allerede tilmeldt? <a href="/deltager">Gå til Min side</a></p>
+  </form>`;
+  content.querySelectorAll('.lp-choice input').forEach((input) => {
+    input.onchange = () => content.querySelectorAll('.lp-choice').forEach((card) => card.classList.toggle('is-selected', card.querySelector('input').checked));
+  });
+  formAction('#choose-event', async (form) => {
+    draft.type = field(form, 'type');
+    saveDraft();
+    details();
+  });
 }
-function login(){
- const content=shell(3);content.innerHTML='<form id="participant-login" class="participant-login"><h2>Din deltagerside</h2><p>Brug den mailadresse, du tilmeldte dig med. Du får en engangskode og behøver ingen adgangskode.</p><label>Mailadresse<input name="email" type="email" autocomplete="email" required maxlength="254"></label><button class="primary" type="submit">Send engangskode →</button><p class="help">Har du ikke tilmeldt dig endnu? <a href="/tilmelding">Vælg deltagelse →</a></p></form>';
- formAction('#participant-login',async form=>sendCode(value(form,'email'),false,async()=>{const {data,error}=await client.from('event_registrations').select('*').eq('user_id',currentUser.id);if(error)throw error;if(!data.length){const content=shell(3);content.innerHTML='<h2>Ingen tilmelding endnu</h2><p>Din mail er bekræftet, men der er ingen eventtilmelding på kontoen.</p><a class="secondary" href="/tilmelding">Tilmeld dig →</a>';return;}receipt(data[0]);}));
+
+function summary(rows, note) {
+  return `<aside class="lp-panel" style="flex: 1 1 340px" aria-label="Opsummering">
+    <p style="margin: 0; font: 400 32px/1 var(--font-display)">Din tilmelding</p>
+    <dl class="lp-summary">${rows.map(([k, v, total]) => `<div class="${total ? 'is-total' : ''}"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+    <p class="lp-help">${note}</p>
+  </aside>`;
 }
-async function sendCode(email,create,onVerified){
- const {error}=await client.auth.signInWithOtp({email,options:{shouldCreateUser:create}});if(error)throw new Error(error.status===429?'Vent lidt, før du beder om en ny kode.':'Loginmailen kunne ikke sendes. Prøv igen eller kontakt LykkeLiga.');
- const content=shell(3);content.innerHTML=`<form id="verify-email" class="participant-login"><p class="eyebrow">Tjek din indbakke</p><h2>Din mail. Din adgang.</h2><p>Hvis adressen kan bruges, har vi sendt en engangskode til <strong>${esc(email)}</strong>. Tjek også spam.</p><label>Engangskode<input name="token" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" minlength="6" maxlength="10" required autofocus></label><button class="primary" type="submit">${create?'Bekræft mail og tilmelding':'Åbn deltagersiden'} →</button><p class="help">Koden er personlig. <button type="button" class="text-button" id="resend-code" disabled>Send ny kode om 60 sek.</button></p><a class="back" href="${create?'/tilmelding':'/deltager'}">← Tilbage</a></form>`;
- let seconds=60;const timer=setInterval(()=>{const button=$('#resend-code');if(!button){clearInterval(timer);return;}seconds--;button.textContent=seconds>0?`Send ny kode om ${seconds} sek.`:'Send ny kode';button.disabled=seconds>0;if(seconds<=0)clearInterval(timer);},1000);
- $('#resend-code').onclick=async()=>{const button=$('#resend-code');button.disabled=true;try{await sendCode(email,create,onVerified);}catch(e){errorNode($('#verify-email'),e);button.disabled=false;}};
- formAction('#verify-email',async form=>{if(currentUser?.email?.toLowerCase()===email.toLowerCase()){await onVerified();return;}const {data,error}=await client.auth.verifyOtp({email,token:value(form,'token'),type:'email'});if(error)throw new Error('Koden er ugyldig eller udløbet. Kontrollér den eller bed om en ny.');currentUser=data.user;await onVerified();});
+
+// Step 2: contact details and discount code.
+function details() {
+  const p = packages[draft.type];
+  const content = shell(2, 'Dine oplysninger', { back: { href: '#', label: 'Skift deltagelse' } });
+  content.innerHTML = `<div class="lp-split">
+    <form id="event-details" class="lp-form" style="flex: 999 1 520px">
+      <div class="lp-field-row">
+        <div class="lp-field"><label for="ev-name">Fulde navn</label><input id="ev-name" class="lp-input" name="name" autocomplete="name" minlength="2" maxlength="120" value="${esc(draft.name)}" required></div>
+        <div class="lp-field"><label for="ev-phone">Telefon</label><input id="ev-phone" class="lp-input" name="phone" type="tel" autocomplete="tel" minlength="6" maxlength="30" value="${esc(draft.phone)}" required></div>
+      </div>
+      <div class="lp-field"><label for="ev-email">Mail</label><input id="ev-email" class="lp-input" name="email" type="email" autocomplete="email" maxlength="254" value="${esc(currentUser?.email || draft.email)}" ${currentUser ? 'readonly' : ''} required><p class="lp-help">Din mail bliver din adgang til Min side. Vi sender en kode hertil, før tilmeldingen gemmes.</p></div>
+      <div class="lp-field"><label for="ev-address">Faktureringsadresse</label><textarea id="ev-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required>${esc(draft.address)}</textarea></div>
+      ${draft.type === 'pair' ? `<div class="lp-field"><label for="ev-partner">Din makkers fulde navn</label><input id="ev-partner" class="lp-input" name="partner" minlength="2" maxlength="120" value="${esc(draft.partner)}" required></div>` : ''}
+      <div class="lp-field"><label for="ev-code">Rabatkode</label><input id="ev-code" class="lp-input" name="code" autocomplete="off" maxlength="80" value="${esc(draft.code)}"><p class="lp-help">Rabatten beregnes, når du fortsætter.</p></div>
+      <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Fortsæt</button></div>
+    </form>
+    ${summary([[`${LABELS[draft.type]} · ${p.seats} ${p.seats === 1 ? 'spiller' : 'spillere'}`, money(p.price)]], draft.type === 'individual' ? 'Giver budret i makkerauktionen. Et eventuelt vinderbud faktureres separat efter auktionen.' : 'Makkerpar kan ikke byde på auktionen.')}
+  </div>`;
+  $('#shell-back').onclick = (event) => {
+    event.preventDefault();
+    draft = { ...draft, ...Object.fromEntries(new FormData($('#event-details'))) };
+    saveDraft();
+    choose();
+  };
+  formAction('#event-details', async (form) => {
+    const fields = Object.fromEntries(new FormData(form));
+    draft = { ...validateRegistration({ ...fields, type: draft.type }), address: field(form, 'address'), code: field(form, 'code') };
+    if (draft.address.length < 5) throw new Error('Udfyld din faktureringsadresse.');
+    saveDraft();
+    const { data, error } = await client.rpc('event_registration_quote', { p_kind: draft.type, p_code: draft.code });
+    if (error) throw error;
+    quote = data;
+    review();
+  });
 }
-function receipt(r){
- const p=packages[r.kind],cancelled=r.status==='cancelled';document.title='Din deltagelse — Lykke Padel';
- main.innerHTML=`<section class="registration registration-success"><p class="eyebrow">${cancelled?'Tilmelding annulleret':'Tilmelding bekræftet'}</p><h1>${cancelled?'Kontakt LykkeLiga.':r.kind==='individual'?'Din plads er klar.':'Jeres makkerpar er klar.'}</h1><p>${esc(r.full_name)}${r.partner_name?' & '+esc(r.partner_name):''} · ${p.name}</p><div class="included"><p>${r.seats} ${r.seats===1?'plads':'pladser'} · ${money(r.base_price)} − ${money(r.discount_amount)} i rabat</p><p><strong>Til betaling: ${money(r.amount_due)}</strong> · Rabatkode ${esc(r.discount_code)}</p><p class="help">Reference: ${esc(r.id.slice(0,8).toUpperCase())} · ${esc(r.email)}</p></div><p class="help" style="margin-top:24px">${cancelled?'Tilmeldingen giver ikke længere adgang til at byde.':r.kind==='individual'?'Din individuelle tilmelding giver adgang til testbud. Bud skal bekræftes og hæves med mindst 500 kr.':'I spiller sammen som et fast par. Makkerauktionen er for individuelle deltagere.'}</p><a class="primary" href="/auktion">${r.kind==='individual'&&!cancelled?'Gå til makkerauktionen':'Se makkerauktionen'} →</a><p class="help">Gem adressen <a href="/deltager">/deltager</a>. På en ny enhed får du en ny engangskode på mail. Vi sender ikke en separat kvitteringsmail endnu.</p><button class="text-button" id="event-logout">Log ud</button></section>`;
- $('#event-logout').onclick=async()=>{await client.auth.signOut();location.href='/deltager';};window.scrollTo(0,0);
+
+// Step 3: review and confirm (sends the mail code if not signed in).
+function review() {
+  const content = shell(3, 'Gennemse og bekræft', { back: { href: '#', label: 'Ret oplysninger' } });
+  const rows = [
+    ['Navn', esc(draft.name)],
+    ...(draft.type === 'pair' ? [['Makker', esc(draft.partner)]] : []),
+    ['Mail', esc(draft.email)],
+    ['Telefon', esc(draft.phone)],
+    ['Faktureringsadresse', esc(draft.address)],
+  ];
+  content.innerHTML = `<div class="lp-split">
+    <form id="event-confirm" class="lp-form" style="flex: 999 1 520px">
+      <dl class="lp-summary" style="border-top: 2px solid var(--ink)">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd style="text-align: right; white-space: pre-line">${v}</dd></div>`).join('')}</dl>
+      <label class="lp-check"><input name="confirm" type="checkbox" required><span>Jeg vil gemme denne testtilmelding hos LykkeLiga. Oplysningerne bruges til deltagelse og auktionsadgang. Der trækkes ingen penge, og bud i testauktionen faktureres ikke.</span></label>
+      <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">${currentUser ? 'Bekræft tilmelding' : 'Send kode til min mail'}</button></div>
+    </form>
+    ${summary(
+      [
+        [`${LABELS[draft.type]} · ${packages[draft.type].seats} ${packages[draft.type].seats === 1 ? 'spiller' : 'spillere'}`, money(quote.base_price)],
+        ['Rabat', quote.discount_amount ? '−' + money(quote.discount_amount) : money(0)],
+        ['I alt', money(quote.amount_due), true],
+      ],
+      'Kun tilmeldinger til 0 kr. kan gennemføres, indtil betaling åbner.',
+    )}
+  </div>`;
+  $('#shell-back').onclick = (event) => {
+    event.preventDefault();
+    details();
+  };
+  formAction('#event-confirm', async () => {
+    if (quote.amount_due !== 0) throw new Error('Betaling er ikke åbnet endnu. Brug en gyldig rabatkode for at gennemføre testtilmeldingen.');
+    if (currentUser) await complete();
+    else await sendCode(draft.email, true, complete);
+  });
+}
+
+async function complete() {
+  const { data, error } = await client.rpc('complete_event_registration', {
+    p_kind: draft.type,
+    p_name: draft.name,
+    p_phone: draft.phone,
+    p_address: draft.address,
+    p_partner: draft.partner || '',
+    p_code: draft.code,
+    p_terms: 'registration-test-v1',
+  });
+  if (error) throw error;
+  sessionStorage.removeItem(DRAFT_KEY);
+  receipt(data);
+}
+
+// Participant login with a one-time code.
+function login() {
+  const content = shell(0, 'Min side');
+  content.innerHTML = `<form id="participant-login" class="lp-form" style="max-width: 560px">
+    <p class="lp-lead">Log ind med den mail, du tilmeldte dig med. Du får en kode på mail og skal ikke bruge en adgangskode.</p>
+    <div class="lp-field"><label for="login-email">Mail</label><input id="login-email" class="lp-input" name="email" type="email" autocomplete="email" required maxlength="254"></div>
+    <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Send kode</button></div>
+    <p class="lp-help">Ikke tilmeldt endnu? <a href="/tilmelding">Tilmeld dig</a></p>
+  </form>`;
+  formAction('#participant-login', async (form) =>
+    sendCode(field(form, 'email'), false, async () => {
+      const { data, error } = await client.from('event_registrations').select('*').eq('user_id', currentUser.id);
+      if (error) throw error;
+      if (!data.length) {
+        shell(0, 'Ingen tilmelding endnu').innerHTML = '<div class="lp-empty"><p class="lp-text">Din mail er bekræftet, men der er ingen tilmelding på kontoen.</p><a class="lp-btn lp-btn--primary" href="/tilmelding">Tilmeld dig</a></div>';
+        return;
+      }
+      receipt(data[0]);
+    }),
+  );
+}
+
+async function sendCode(email, create, onVerified) {
+  const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: create } });
+  if (error) throw new Error(error.status === 429 ? 'Vent lidt, før du beder om en ny kode.' : 'Mailen med koden kunne ikke sendes. Prøv igen eller kontakt LykkeLiga.');
+  const content = shell(create ? 3 : 0, 'Tjek din mail', create ? { back: { href: '#', label: 'Gå tilbage og ret' } } : {});
+  content.innerHTML = `<form id="verify-email" class="lp-form" style="max-width: 640px; gap: 28px">
+    <p class="lp-lead">Vi har sendt en kode til <strong>${esc(email)}</strong>. Indtast den her${create ? ' for at gennemføre tilmeldingen' : ''}. Tjek også spam.</p>
+    <div class="lp-field"><label for="otp">Kode fra mailen</label><input id="otp" class="lp-input lp-input--big" name="token" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" minlength="6" maxlength="10" required autofocus style="max-width: 320px; letter-spacing: 6px"></div>
+    <div class="lp-actions" style="align-items: center">
+      <button class="lp-btn lp-btn--primary lp-btn--large" type="submit">${create ? 'Bekræft og tilmeld' : 'Log ind'}</button>
+      <button class="lp-btn--text" type="button" id="resend-code" disabled>Send ny kode om 60 sek.</button>
+    </div>
+  </form>`;
+  const back = $('#shell-back');
+  if (back)
+    back.onclick = (event) => {
+      event.preventDefault();
+      details();
+    };
+  let seconds = 60;
+  const timer = setInterval(() => {
+    const button = $('#resend-code');
+    if (!button) return clearInterval(timer);
+    seconds--;
+    button.textContent = seconds > 0 ? `Send ny kode om ${seconds} sek.` : 'Send ny kode';
+    button.disabled = seconds > 0;
+    if (seconds <= 0) clearInterval(timer);
+  }, 1000);
+  $('#resend-code').onclick = async () => {
+    const button = $('#resend-code');
+    button.disabled = true;
+    try {
+      await sendCode(email, create, onVerified);
+    } catch (resendError) {
+      $('#verify-email').insertAdjacentHTML('beforeend', errorHtml(errorMessage(resendError)));
+      button.disabled = false;
+    }
+  };
+  formAction('#verify-email', async (form) => {
+    if (currentUser?.email?.toLowerCase() === email.toLowerCase()) return onVerified();
+    const { data, error: verifyError } = await client.auth.verifyOtp({ email, token: field(form, 'token'), type: 'email' });
+    if (verifyError) throw new Error('Koden er forkert eller udløbet. Tjek den, eller bed om en ny.');
+    currentUser = data.user;
+    await onVerified();
+  });
+}
+
+// Min side: the participant's registration.
+function receipt(r) {
+  const cancelled = r.status === 'cancelled';
+  const first = r.full_name.split(' ')[0];
+  document.title = 'Min side – Lykke Padel';
+  setHeader({ loginText: 'Min side', loginHref: '/deltager', showSignup: false });
+  main.innerHTML = `
+  <section class="lp-band-brown">
+    <div class="lp-wrap lp-hero">
+      <div class="lp-heading">
+        <p class="lp-eyebrow">Min side</p>
+        <h1 class="lp-display lp-display--band">Hej ${esc(first)}</h1>
+        <p class="lp-lead">${cancelled ? 'Din tilmelding er annulleret. Kontakt LykkeLiga, hvis det er en fejl.' : 'Du er tilmeldt Lykke Padel den 2. april 2027 i Pakhus77, Aarhus.'}</p>
+      </div>
+      <dl class="lp-stats">
+        <div><dt>Deltagelse</dt><dd>${LABELS[r.kind]}</dd></div>
+        <div><dt>Status</dt><dd>${cancelled ? 'Annulleret' : 'Bekræftet'}</dd></div>
+        <div><dt>Reference</dt><dd>${esc(r.id.slice(0, 8).toUpperCase())}</dd></div>
+      </dl>
+    </div>
+  </section>
+  <div class="lp-wrap lp-section lp-split" style="gap: 56px">
+    <section style="flex: 999 1 520px; display: flex; flex-direction: column; gap: 24px">
+      <h2 class="lp-display lp-display--s">${cancelled ? 'Hvad nu?' : r.kind === 'individual' ? 'Find din makker' : 'I er klar'}</h2>
+      <p class="lp-text">${cancelled ? 'Tilmeldingen giver ikke længere adgang til at byde.' : r.kind === 'individual' ? 'Din tilmelding giver adgang til makkerauktionen. Bud skal bekræftes og hæves med mindst 500 kr. Vinder du ikke, matcher vi dig med en makker på dit niveau.' : 'I spiller sammen som fast makkerpar hele turneringen. Makkerauktionen er for individuelle deltagere.'}</p>
+      <div class="lp-actions">
+        <a class="lp-btn lp-btn--primary lp-btn--large" href="/auktion">${r.kind === 'individual' && !cancelled ? 'Gå til makkerauktionen' : 'Se makkerauktionen'}</a>
+        <a class="lp-btn lp-btn--secondary lp-btn--large" href="/om-dagen">Om dagen og program</a>
+      </div>
+      <p class="lp-help">Du kan altid komme tilbage via lykkepadel.dk/deltager. På en ny enhed får du en ny kode på mail. Vi sender endnu ikke en kvitteringsmail.</p>
+      <div><button class="lp-btn--text" type="button" id="event-logout">Log ud</button></div>
+    </section>
+    ${summary(
+      [
+        ['Navn', esc(r.full_name)],
+        ...(r.partner_name ? [['Makker', esc(r.partner_name)]] : []),
+        ['Mail', esc(r.email)],
+        ['Telefon', esc(r.phone)],
+        ['Betalt', `${money(r.amount_due)}${r.discount_code ? ' (rabatkode)' : ''}`],
+      ],
+      'Skal noget rettes? Skriv til <a href="mailto:info@lykkeliga.dk">info@lykkeliga.dk</a>.',
+    )}
+  </div>`;
+  $('#event-logout').onclick = async () => {
+    await client.auth.signOut();
+    location.href = '/deltager';
+  };
+  window.scrollTo(0, 0);
 }
