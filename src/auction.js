@@ -270,8 +270,12 @@ function bidForm(lot) {
   return `<form id="bid-form" class="lp-form" novalidate>
     <div class="lp-field">
       <label for="amount">Dit bud i kr.</label>
-      <input id="amount" name="amount" class="lp-input lp-input--big" type="number" inputmode="numeric" min="${min}" max="${MAX_BID}" step="${STEP}" value="${min}" required>
-      <p class="lp-help">Mindst ${money(min)}. Bud i hele 500 kr.</p>
+      <div class="lp-stepper">
+        <button class="lp-stepper__btn" type="button" id="amount-down" aria-label="Sænk buddet med 500 kr."><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+        <input id="amount" name="amount" class="lp-input lp-input--big" type="number" inputmode="numeric" min="${min}" max="${MAX_BID}" step="${STEP}" value="${min}" required>
+        <button class="lp-stepper__btn" type="button" id="amount-up" aria-label="Hæv buddet med 500 kr."><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+      </div>
+      <p class="lp-help">Mindst ${money(min)} Bud i hele 500 kr.</p>
     </div>
     <div class="lp-chips" role="group" aria-label="Hurtige bud">
       ${quick.map((amount, i) => `<button class="lp-chip" type="button" data-amount="${amount}" aria-pressed="${i === 0}">${money(amount)}</button>`).join('')}
@@ -339,6 +343,15 @@ function wireBidForm(lot) {
       sync();
     };
   });
+  const step = (direction) => {
+    const current = Number(input.value) || minimum(lot);
+    // Snap to the 500 kr. grid, then move one step within the allowed range.
+    const snapped = Math.round(current / STEP) * STEP;
+    input.value = Math.min(MAX_BID, Math.max(minimum(lot), snapped + direction * STEP));
+    sync();
+  };
+  $('#amount-down').onclick = () => step(-1);
+  $('#amount-up').onclick = () => step(1);
   input.addEventListener('input', sync);
   $('#bid-form').onsubmit = (event) => {
     event.preventDefault();
