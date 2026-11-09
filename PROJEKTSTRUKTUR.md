@@ -92,6 +92,16 @@ Supabase Auth → SMTP → Resend → modtagerens mail
 
 ## 3. Filer, moduler og ruter
 
+> **Opdatering (branch `design/nyt-look`):** Alle sider undtagen den nuværende forside (`/`, `index.html` + `style.css`) bruger nu designsystemet "Lykke Padel designsystem".
+> - `src/lp.css` erstatter `src/auction.css` og indeholder designsystemets tokens og `lp-`-komponentklasser.
+> - `src/partials/header.html` og `footer.html` sættes ind af `scripts/build.mjs` på alle sider.
+> - `src/ui.js` samler fælles hjælpere (dialog, toast, formularer, header-tilstand).
+> - Nye statiske sider: `/om-dagen` (`src/om-dagen.html`, inkl. program på `#program`) og `/sagen` (`src/sagen.html`).
+> - `/forsidetest` og `src/front-test.*` er fjernet; adressen sender videre til `/auktion`, som er den kommende forside.
+> - `src/select.js` er fjernet; admin bruger almindelige `select`-felter.
+> - Den gamle konto-kode med adgangskode, nulstilling af adgangskode og manuel budprofil (`register_bidder`) samt den lokale demotilmelding (`/tilmelding?demo=1`) er fjernet fra `auction.js`. I demo (`/auktion?demo=1`) kan man byde lokalt uden tilmelding. Databasen er uændret.
+> Afsnittene nedenfor beskriver delvist den tidligere struktur.
+
 ### 3.1 Mapper og centrale filer
 
 - `index.html`: den nuværende offentlige landing page. Den har ingen indgang til administration eller de nye eventfunktioner.

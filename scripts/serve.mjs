@@ -9,13 +9,16 @@ try {
  for(const [key,value] of Object.entries(local))if(process.env[key]===undefined)process.env[key]=value;
 } catch(error){if(error.code!=='ENOENT')throw error;}
 const root=resolve(process.argv[2]||'dist');
-const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ttf':'font/ttf','.txt':'text/plain; charset=utf-8'};
+const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.ttf':'font/ttf','.txt':'text/plain; charset=utf-8'};
 createServer(async(req,res)=>{
  try{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/api/auction-config'){configHandler(req,res);return;}
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
-  const routes={'/':'index.html','/forsidetest':'forsidetest/index.html','/forsidetest/':'forsidetest/index.html','/auktion':'auktion/index.html','/auktion/':'auktion/index.html','/deltager':'deltager/index.html','/deltager/':'deltager/index.html','/tilmelding':'tilmelding/index.html','/tilmelding/':'tilmelding/index.html','/admin':'admin/index.html','/admin/':'admin/index.html','/administration':'administration/index.html','/administration/':'administration/index.html'};
+  const pages=['auktion','deltager','tilmelding','admin','administration','om-dagen','sagen'];
+  const routes={'/':'index.html'};
+  for(const page of pages){routes['/'+page]=page+'/index.html';routes['/'+page+'/']=page+'/index.html';}
+  if(pathname==='/forsidetest'||pathname==='/forsidetest/'){res.writeHead(307,{Location:'/auktion'}).end();return;}
   const relative=routes[pathname]||pathname.slice(1);
   if(relative.split('/').some(part=>part.startsWith('.'))){res.writeHead(404).end();return;}
   const file=resolve(root,relative);

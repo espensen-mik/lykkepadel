@@ -8,6 +8,11 @@
       "source": "/administration",
       "destination": "/admin",
       "permanent": false
+    },
+    {
+      "source": "/forsidetest",
+      "destination": "/auktion",
+      "permanent": false
     }
   ]
 }
