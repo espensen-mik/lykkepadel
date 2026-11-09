@@ -26,6 +26,7 @@ const pages = {
   administration: ['src/auction.html', ''],
   'om-dagen': ['src/om-dagen.html', 'om-dagen'],
   sagen: ['src/sagen.html', 'sagen'],
+  forsidetest: ['src/forsidetest.html', ''],
 };
 for (const [route, [template, current]] of Object.entries(pages)) {
   await mkdir(`dist/${route}`, { recursive: true });
@@ -33,8 +34,8 @@ for (const [route, [template, current]] of Object.entries(pages)) {
 }
 
 await build({
-  entryPoints: ['src/auction.js'],
-  outfile: 'dist/auction.js',
+  entryPoints: { auction: 'src/auction.js', front: 'src/front.js' },
+  outdir: 'dist',
   bundle: true,
   format: 'esm',
   platform: 'browser',
