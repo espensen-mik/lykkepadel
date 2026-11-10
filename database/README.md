@@ -88,6 +88,12 @@ Før kørslen viser Min side en besked om at skrive til signe@lykkeliga.dk.
 
 `node --test tests/contact-details.test.mjs` tester funktionen.
 
+## Auktionerne fra test-sitet
+
+Kør `auction-lots-2027.sql` én gang efter `auction-items.sql`. Den opretter de fem auktioner fra demoen (to charity-produkter og tre padelmakkere) som kladder med sluttid 31. marts 2027 kl. 18.00. Rediger dem i `/admin`, og sæt status til "Live" for at offentliggøre dem. Auktioner med samme navn springes over, så filen kan køres igen uden dubletter. Instagram-profilerne fra demoen findes ikke i databasen og vises ikke på rigtige auktioner.
+
+`node --test tests/auction-lots-2027.test.mjs` tester filen.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
