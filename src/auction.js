@@ -4,6 +4,7 @@ import { initialLots, demoHistory } from './demo.js';
 import { termsFor, keyTerms, stepsFor, faqFor } from './terms.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
+import { imageEditor, isProcessed } from './image-crop.js';
 import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setTestbar, setHeader, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
@@ -77,12 +78,18 @@ async function fetchLots() {
 
 const liveLots = () => lots.filter((lot) => lot.status === 'live');
 const closed = (lot) => isOver(lot.ends_at);
+// Live but waiting for its start time: visible, with a countdown, but no bidding yet.
+const notStarted = (lot) => Boolean(lot.starts_at) && !isOver(lot.starts_at) && !closed(lot);
+// Uploaded images already carry the duotone, so the CSS filter is skipped.
+const duo = (lot) => (isProcessed(lot.image_url) ? ' is-duotone' : '');
 const minimum = (lot) => (lot.bid_count ? lot.current_bid + STEP : lot.starting_price);
 const firstName = (lot) => lot.name.split(' ')[0];
 // Charity products need an active profile; padel partners also need an individual tournament registration.
 const canBid = (lot) => demo || (profile?.approved === true && (lot.kind === 'item' || eventAccess));
 
 function safeImage(value) {
+  // Demo images made in the admin live in the browser as JPEG data.
+  if (demo && /^data:image\/jpeg;base64,[a-zA-Z0-9+/=]+$/.test(value || '')) return value;
   try {
     const url = new URL(value, location.origin);
     if (url.origin === location.origin && /^\/(images|auktioner)\//.test(url.pathname)) return url.href;
@@ -126,11 +133,12 @@ const kindOf = (lot) => (lot.kind === 'item' ? 'item' : 'partner');
 
 function lotCard(lot, index) {
   const over = closed(lot);
+  const waiting = notStarted(lot);
   const item = kindOf(lot) === 'item';
   return `<article class="lp-lot">
     <a class="lp-lot__link" href="${link(lot.id)}">
       <div class="lp-lot__media">
-        <img src="${esc(safeImage(lot.image_url))}" alt="${esc(lot.name)}" loading="${index < 3 ? 'eager' : 'lazy'}">
+        <img class="lp-lot__img${duo(lot)}" src="${esc(safeImage(lot.image_url))}" alt="${esc(lot.name)}" loading="${index < 3 ? 'eager' : 'lazy'}">
         <p class="lp-lot__tag">${esc(lot.category)}</p>
       </div>
       <div class="lp-lot__body">
@@ -141,9 +149,9 @@ function lotCard(lot, index) {
             <p class="lp-lot__meta">${lot.bid_count ? `Højeste bud · ${lot.bid_count} bud` : 'Startpris'}</p>
             <p class="lp-lot__amount">${money(lot.current_bid || lot.starting_price)}</p>
           </div>
-          <p class="lp-lot__ends">${over ? 'Auktionen<br>er slut' : `Slutter om<br><span data-countdown="short" data-ends="${esc(lot.ends_at)}">${countdownShort(lot.ends_at)}</span>`}</p>
+          <p class="lp-lot__ends">${over ? 'Auktionen<br>er slut' : waiting ? `Starter om<br><span data-countdown="short" data-ends="${esc(lot.starts_at)}" data-starts>${countdownShort(lot.starts_at)}</span>` : `Slutter om<br><span data-countdown="short" data-ends="${esc(lot.ends_at)}">${countdownShort(lot.ends_at)}</span>`}</p>
         </div>
-        <span class="lp-btn lp-btn--primary lp-btn--block">${over ? 'Se resultat' : item ? 'Se og byd' : `Byd på ${esc(firstName(lot))}`}</span>
+        <span class="lp-btn lp-btn--primary lp-btn--block">${over ? 'Se resultat' : waiting ? 'Se auktionen' : item ? 'Se og byd' : `Byd på ${esc(firstName(lot))}`}</span>
       </div>
     </a>
   </article>`;
@@ -156,12 +164,15 @@ const soonCard = `<article class="lp-lot lp-lot--soon">
 </article>`;
 
 function countdownSection(visible) {
-  const upcoming = visible.filter((lot) => !closed(lot)).sort((a, b) => new Date(a.ends_at) - new Date(b.ends_at))[0];
-  const label = !visible.length ? 'Auktionerne afsløres snart' : upcoming ? (visible.length > 1 ? 'Næste auktion slutter om' : 'Auktionen slutter om') : 'Auktionen er afsluttet';
+  const open = visible.filter((lot) => !closed(lot) && !notStarted(lot)).sort((a, b) => new Date(a.ends_at) - new Date(b.ends_at))[0];
+  const next = visible.filter(notStarted).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0];
+  // Count down to the next end while bidding is open; otherwise to the next start.
+  const target = open ? open.ends_at : next?.starts_at;
+  const label = !visible.length ? 'Auktionerne afsløres snart' : open ? (visible.length > 1 ? 'Næste auktion slutter om' : 'Auktionen slutter om') : next ? 'Auktionen åbner om' : 'Auktionen er afsluttet';
   return `<section class="lp-countdown" aria-label="Nedtælling">
     <div class="lp-wrap lp-countdown__inner">
       <p class="lp-countdown__label">${label}</p>
-      ${upcoming ? `<div class="lp-countdown__time" data-countdown="bar" data-ends="${esc(upcoming.ends_at)}" role="timer">${countdownBar(upcoming.ends_at)}</div>` : ''}
+      ${target ? `<div class="lp-countdown__time" data-countdown="bar" data-ends="${esc(target)}" ${open ? '' : 'data-starts'} role="timer">${countdownBar(target)}</div>` : ''}
       <p class="lp-countdown__meta">2. april 2027 · Pakhus77, Aarhus</p>
     </div>
   </section>`;
@@ -180,7 +191,7 @@ function listing() {
   <section class="lp-band-brown">
     <div class="lp-wrap lp-hero">
       <div class="lp-heading">
-        <p class="lp-eyebrow">${visible.length ? 'Auktionen er åben' : 'Charity-auktion'}</p>
+        <p class="lp-eyebrow">${visible.some((lot) => !closed(lot) && !notStarted(lot)) ? 'Auktionen er åben' : visible.some(notStarted) ? 'Auktionen åbner snart' : 'Charity-auktion'}</p>
         <h1 class="lp-display lp-display--hero">Lykke Auktion</h1>
         <p class="lp-lead">Byd på unikke oplevelser, særlige ting og en plads ved siden af Danmarks padelprofiler. Hele beløbet går ubeskåret til LykkeLiga.</p>
         <div class="lp-actions">
@@ -299,6 +310,7 @@ function detail(id) {
   }
   document.title = `${lot.name} – Lykke Auktion – Lykke Padel`;
   const over = closed(lot);
+  const waiting = notStarted(lot);
   const item = kindOf(lot) === 'item';
   const others = liveLots().filter((l) => l.id !== lot.id).slice(0, 3);
   const meta = [esc(lot.category), item && lot.value_text ? `Værdi: ${esc(lot.value_text)}` : '', instagram(lot)].filter(Boolean).join(' · ');
@@ -308,7 +320,7 @@ function detail(id) {
     <a class="lp-back" href="${link()}">← Hele auktionen</a>
     <div class="lp-split" style="margin-top: 20px">
       <div class="lp-lot__media lp-detail-media">
-        <img src="${esc(safeImage(lot.image_url))}" alt="${esc(lot.name)}">
+        <img class="lp-lot__img${duo(lot)}" src="${esc(safeImage(lot.image_url))}" alt="${esc(lot.name)}">
         <p class="lp-lot__tag">${esc(lot.category)}</p>
       </div>
       <div class="lp-detail-body">
@@ -322,10 +334,10 @@ function detail(id) {
           <dl class="lp-bid-stats">
             <div><dt>${lot.bid_count ? 'Højeste bud' : 'Startpris'}</dt><dd class="is-amount">${money(lot.current_bid || lot.starting_price)}</dd></div>
             <div><dt>Antal bud</dt><dd>${lot.bid_count}</dd></div>
-            <div><dt>${over ? 'Status' : 'Slutter om'}</dt><dd>${over ? 'Slut' : `<span data-countdown="short" data-ends="${esc(lot.ends_at)}">${countdownShort(lot.ends_at)}</span>`}</dd></div>
+            <div><dt>${over ? 'Status' : waiting ? 'Starter om' : 'Slutter om'}</dt><dd>${over ? 'Slut' : waiting ? `<span data-countdown="short" data-ends="${esc(lot.starts_at)}" data-starts>${countdownShort(lot.starts_at)}</span>` : `<span data-countdown="short" data-ends="${esc(lot.ends_at)}">${countdownShort(lot.ends_at)}</span>`}</dd></div>
           </dl>
-          <p class="lp-help">${over ? `Auktionen sluttede ${date(lot.ends_at)}. Der kan ikke afgives flere bud.` : `Slutter ${date(lot.ends_at)} (dansk tid). Højeste bud, når tiden udløber, vinder.`}</p>
-          ${over ? '' : canBid(lot) ? bidForm(lot) : bidAccessNotice(lot)}
+          <p class="lp-help">${over ? `Auktionen sluttede ${date(lot.ends_at)}. Der kan ikke afgives flere bud.` : waiting ? `Budgivningen åbner ${date(lot.starts_at)} og slutter ${date(lot.ends_at)} (dansk tid).` : `Slutter ${date(lot.ends_at)} (dansk tid). Højeste bud, når tiden udløber, vinder.`}</p>
+          ${over ? '' : waiting ? `<div class="lp-notice">Du kan byde, når nedtællingen er slut.${canBid(lot) ? '' : ' Gør din profil klar allerede nu.'}</div>${canBid(lot) ? '' : bidAccessNotice(lot)}` : canBid(lot) ? bidForm(lot) : bidAccessNotice(lot)}
         </section>
         <section class="lp-history" id="bid-history" aria-label="Budhistorik" hidden></section>
         ${demo ? '<div class="lp-notice">Demo: buddene er eksempler og gemmes kun i din browser.</div>' : '<p class="lp-help">Testversion. Der udsendes ingen betaling eller faktura fra testen.</p>'}
@@ -335,7 +347,7 @@ function detail(id) {
   ${lotInfo(lot)}
   ${others.length ? `<section class="lp-band-cream lp-section--rule"><div class="lp-wrap lp-section"><h2 class="lp-display lp-display--s">Andre auktioner</h2><div class="lp-lots lp-lots--carousel" style="margin-top: 40px">${others.map(lotCard).join('')}</div></div></section>` : ''}`;
 
-  if (!over && canBid(lot)) wireBidForm(lot);
+  if (!over && !waiting && canBid(lot)) wireBidForm(lot);
   renderHistory(lot);
 }
 
@@ -505,12 +517,33 @@ function showAdminLogin() {
   $('#admin-logout')?.addEventListener('click', logout);
 }
 
+const pill = (kind, text) => `<span class="lp-pill lp-pill--${kind}">${text}</span>`;
 const statusPill = (lot) =>
-  lot.status === 'draft'
-    ? '<span class="lp-pill lp-pill--quiet">Kladde</span>'
-    : closed(lot)
-      ? '<span class="lp-pill lp-pill--quiet">Afsluttet</span>'
-      : '<span class="lp-pill lp-pill--live">Live</span>';
+  lot.status === 'trashed'
+    ? pill('quiet', 'I papirkurven')
+    : lot.status === 'draft'
+      ? pill('quiet', 'Kladde')
+      : closed(lot)
+        ? pill('quiet', 'Afsluttet')
+        : notStarted(lot)
+          ? pill('lead', 'Starter snart')
+          : pill('live', 'Live');
+
+const ICONS = {
+  trash: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  restore: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg>',
+  calendar: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+  upload: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 15v5h16v-5"/></svg>',
+  minus: '<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+  plus: '<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+};
+
+const BUCKET = 'auction-images';
+const trashed = () => lots.filter((lot) => lot.status === 'trashed');
+// Before database/auction-admin-tools.sql is applied the new functions do not exist.
+const missingFunction = (error) => /PGRST202|could not find/i.test(`${error?.code} ${error?.message}`);
+const needsSql = (error) => (missingFunction(error) ? new Error('Kør database/auction-admin-tools.sql i Supabase først.') : error);
+const fail = (error) => toast(errorMessage(error));
 
 async function adminView() {
   document.title = 'Admin – Lykke Padel';
@@ -524,13 +557,20 @@ async function adminView() {
     $('#admin-login').onclick = showAdminLogin;
     return;
   }
-  const tabs = [...(demo ? [] : [['registrations', 'Tilmeldinger']]), ['lots', 'Auktioner'], ['people', 'Budgivere'], ['winners', 'Vindere']];
+  const inTrash = trashed().length;
+  const tabs = [
+    ...(demo ? [] : [['registrations', 'Tilmeldinger']]),
+    ['lots', 'Auktioner'],
+    ['people', 'Budgivere'],
+    ['winners', 'Vindere'],
+    ['trash', `${ICONS.trash}<span>Papirkurv</span>${inTrash ? `<span class="lp-tabs__count">${inTrash}</span>` : ''}`],
+  ];
   main.innerHTML = `<div class="lp-wrap" style="padding-block: 48px var(--space-9); display: flex; flex-direction: column; gap: 32px">
     <div class="lp-section-head">
       <h1 class="lp-display lp-display--s" style="color: var(--ink)">Administration</h1>
       <div class="lp-actions"><a class="lp-btn lp-btn--secondary" href="${link()}">Se auktionen</a><button class="lp-btn lp-btn--primary" type="button" id="new-lot">Ny auktion</button></div>
     </div>
-    <p class="lp-help">${demo ? 'Demo-administration. Ændringer gemmes kun i denne browser.' : 'Testmiljø. Makkere med bud kan ikke redigeres. Tider vises i dansk tid.'}</p>
+    <p class="lp-help">${demo ? 'Demo-administration. Ændringer gemmes kun i denne browser.' : 'Auktioner med bud kan ikke redigeres. Tider vises i dansk tid.'}</p>
     <nav class="lp-tabs" aria-label="Administration">${tabs.map(([key, label]) => `<a href="#" data-tab="${key}" ${key === adminTab ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
     <div id="admin-body"></div>
     ${demo ? '<p><button class="lp-btn--text" type="button" id="reset-demo">Nulstil demodata</button></p>' : ''}
@@ -554,30 +594,119 @@ async function adminView() {
   if (adminTab === 'lots') return adminLots(body);
   if (adminTab === 'people') return adminPeople(body);
   if (adminTab === 'winners') return adminWinners(body);
+  if (adminTab === 'trash') return adminTrash(body);
 }
 
+// Open auctions first, then upcoming, drafts and finished ones.
+const adminOrder = (lot) => (lot.status === 'draft' ? 2 : closed(lot) ? 3 : notStarted(lot) ? 1 : 0);
+
 function adminLots(body) {
-  if (!lots.length) {
+  const shown = lots.filter((lot) => lot.status !== 'trashed').sort((a, b) => adminOrder(a) - adminOrder(b) || new Date(a.ends_at) - new Date(b.ends_at));
+  if (!shown.length) {
     body.innerHTML = '<div class="lp-empty"><p class="lp-text">Ingen auktioner endnu. Opret den første med "Ny auktion".</p></div>';
     return;
   }
   body.innerHTML = `<div class="lp-tablebox"><table class="lp-table">
-    <thead><tr><th scope="col">Auktion</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col" class="num">Startpris</th><th scope="col" class="num">Højeste bud</th><th scope="col" class="num">Bud</th><th scope="col">Slutter</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
-    <tbody>${lots
+    <thead><tr><th scope="col">Auktion</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Starter</th><th scope="col">Slutter</th><th scope="col" class="num">Startpris</th><th scope="col" class="num">Højeste bud</th><th scope="col"><span class="sr-only">Handlinger</span></th></tr></thead>
+    <tbody>${shown
       .map(
         (lot) => `<tr>
-      <td><div class="lp-cell-name"><img class="lp-thumb" src="${esc(safeImage(lot.image_url))}" alt=""><strong>${esc(lot.name)}</strong></div></td>
+      <td><div class="lp-cell-name"><img class="lp-thumb${duo(lot)}" src="${esc(safeImage(lot.image_url))}" alt=""><strong>${esc(lot.name)}</strong></div></td>
       <td>${kindOf(lot) === 'item' ? 'Charity-produkt' : 'Padelmakker'}</td>
       <td>${statusPill(lot)}</td>
-      <td class="num">${money(lot.starting_price)}</td>
-      <td class="num">${lot.bid_count ? money(lot.current_bid) : '–'}</td>
-      <td class="num">${lot.bid_count}</td>
+      <td>${lot.starts_at ? date(lot.starts_at) : '<span class="lp-help">Straks</span>'}</td>
       <td>${date(lot.ends_at)}</td>
-      <td><button class="lp-btn--text" type="button" data-edit="${esc(lot.id)}">${lot.bid_count ? 'Se' : 'Rediger'}</button></td>
+      <td class="num">${money(lot.starting_price)}</td>
+      <td class="num">${lot.bid_count ? `${money(lot.current_bid)}<br><span class="lp-help">${lot.bid_count} bud</span>` : '–'}</td>
+      <td><div class="lp-row-actions"><button class="lp-btn--text" type="button" data-edit="${esc(lot.id)}">${lot.bid_count ? 'Se' : 'Rediger'}</button><button class="lp-iconbtn" type="button" data-trash="${esc(lot.id)}" aria-label="Læg ${esc(lot.name)} i papirkurven" title="Læg i papirkurven">${ICONS.trash}</button></div></td>
     </tr>`,
       )
       .join('')}</tbody></table></div>`;
-  body.querySelectorAll('[data-edit]').forEach((button) => (button.onclick = () => editLot(lots.find((l) => l.id === button.dataset.edit))));
+  const find = (id) => lots.find((l) => l.id === id);
+  body.querySelectorAll('[data-edit]').forEach((button) => (button.onclick = () => editLot(find(button.dataset.edit))));
+  body.querySelectorAll('[data-trash]').forEach((button) => (button.onclick = () => askTrash(find(button.dataset.trash))));
+}
+
+// Trashing is reversible, so it only asks when the auction already has bids.
+function askTrash(lot) {
+  if (!lot.bid_count) return setTrashed(lot, true).catch(fail);
+  modal(`<h2 id="modal-title">Læg i papirkurven?</h2>
+    <p class="lp-text"><strong>${esc(lot.name)}</strong> har ${lot.bid_count} bud. Auktionen bliver skjult for alle, og budgivningen stopper. Buddene bliver gemt, og du kan gendanne auktionen som kladde.</p>
+    <div class="lp-actions"><button class="lp-btn lp-btn--primary" type="button" id="trash-yes">Læg i papirkurven</button><button class="lp-btn lp-btn--secondary" type="button" id="trash-no">Fortryd</button></div>`);
+  $('#trash-no').onclick = closeModal;
+  $('#trash-yes').onclick = () => setTrashed(lot, true).catch(fail);
+}
+
+async function setTrashed(lot, trash) {
+  if (demo) {
+    lot.status = trash ? 'trashed' : 'draft';
+    saveDemo();
+  } else {
+    const { error } = await client.rpc('trash_auction_lot', { p_id: lot.id, p_trash: trash });
+    if (error) throw needsSql(error);
+    await fetchLots();
+  }
+  closeModal();
+  await adminView();
+  toast(trash ? `"${lot.name}" er lagt i papirkurven.` : `"${lot.name}" er gendannet som kladde.`);
+}
+
+function adminTrash(body) {
+  const rows = trashed();
+  if (!rows.length) {
+    body.innerHTML = `<div class="lp-empty"><p class="lp-text">Papirkurven er tom. Brug skraldespanden ved en auktion for at fjerne den fra siden.</p></div>`;
+    return;
+  }
+  const deletable = rows.filter((lot) => !lot.bid_count);
+  body.innerHTML = `<div class="lp-section-head" style="margin-bottom: 20px"><p class="lp-help" style="max-width: 560px">Auktionerne her er skjult for alle. Gendan en auktion som kladde, eller slet den for altid. Auktioner med bud kan ikke slettes, så buddene bevares.</p>${deletable.length ? `<button class="lp-btn lp-btn--secondary" type="button" id="empty-trash">Tøm papirkurven</button>` : ''}</div>
+  <div class="lp-tablebox"><table class="lp-table">
+    <thead><tr><th scope="col">Auktion</th><th scope="col">Type</th><th scope="col" class="num">Bud</th><th scope="col"><span class="sr-only">Handlinger</span></th></tr></thead>
+    <tbody>${rows
+      .map(
+        (lot) => `<tr>
+      <td><div class="lp-cell-name"><img class="lp-thumb${duo(lot)}" src="${esc(safeImage(lot.image_url))}" alt=""><strong>${esc(lot.name)}</strong></div></td>
+      <td>${kindOf(lot) === 'item' ? 'Charity-produkt' : 'Padelmakker'}</td>
+      <td class="num">${lot.bid_count}</td>
+      <td><div class="lp-row-actions"><button class="lp-btn--text lp-btn--icon" type="button" data-restore="${esc(lot.id)}">${ICONS.restore}Gendan</button>${lot.bid_count ? '<span class="lp-help">Har bud</span>' : `<button class="lp-btn--text" type="button" data-delete="${esc(lot.id)}">Slet for altid</button>`}</div></td>
+    </tr>`,
+      )
+      .join('')}</tbody></table></div>`;
+  const find = (id) => lots.find((l) => l.id === id);
+  body.querySelectorAll('[data-restore]').forEach((button) => (button.onclick = () => setTrashed(find(button.dataset.restore), false).catch(fail)));
+  body.querySelectorAll('[data-delete]').forEach((button) => (button.onclick = () => askDelete([find(button.dataset.delete)])));
+  $('#empty-trash')?.addEventListener('click', () => askDelete(deletable));
+}
+
+function askDelete(list) {
+  const one = list.length === 1;
+  modal(`<h2 id="modal-title">Slet for altid?</h2>
+    <p class="lp-text">${one ? `<strong>${esc(list[0].name)}</strong> bliver slettet` : `${list.length} auktioner bliver slettet`} sammen med ${one ? 'sit' : 'deres'} billede. Det kan ikke fortrydes.</p>
+    ${one ? '' : `<ul class="lp-text" style="margin: 0; padding-left: 20px">${list.map((lot) => `<li>${esc(lot.name)}</li>`).join('')}</ul>`}
+    <div class="lp-actions"><button class="lp-btn lp-btn--primary" type="button" id="delete-yes">Slet for altid</button><button class="lp-btn lp-btn--secondary" type="button" id="delete-no">Behold</button></div>`);
+  $('#delete-no').onclick = closeModal;
+  $('#delete-yes').onclick = async () => {
+    $('#delete-yes').disabled = true;
+    try {
+      for (const lot of list) {
+        if (demo) lots = lots.filter((l) => l.id !== lot.id);
+        else {
+          const { error } = await client.rpc('delete_auction_lot', { p_id: lot.id });
+          if (error) throw needsSql(error);
+          await removeImage(lot.image_url);
+        }
+      }
+      if (demo) saveDemo();
+      else await fetchLots();
+      closeModal();
+      await adminView();
+      toast(one ? `"${list[0].name}" er slettet.` : `${list.length} auktioner er slettet.`);
+    } catch (error) {
+      if (!demo) await fetchLots().catch(() => {});
+      closeModal();
+      await adminView();
+      fail(error);
+    }
+  };
 }
 
 async function adminPeople(body) {
@@ -668,54 +797,143 @@ function danishInstant(value) {
   return new Date(result).toISOString();
 }
 
+// Uploaded images live in the public bucket under lots/.
+function bucketPath(url) {
+  const marker = `/storage/v1/object/public/${BUCKET}/`;
+  const at = (url || '').indexOf(marker);
+  return at === -1 ? null : decodeURIComponent(url.slice(at + marker.length));
+}
+
+async function uploadImage(blob) {
+  const path = `lots/${crypto.randomUUID()}.jpg`;
+  const { error } = await client.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
+  if (error) throw /not found|bucket/i.test(error.message) ? new Error('Billed-upload kræver, at database/auction-admin-tools.sql er kørt i Supabase.') : error;
+  return client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+// Best effort: a leftover file only costs storage, so errors are ignored.
+async function removeImage(url) {
+  const path = bucketPath(url);
+  if (path && !demo) await client.storage.from(BUCKET).remove([path]).catch(() => {});
+}
+
+const dateField = (id, name, value, extra = '') =>
+  `<div class="lp-datefield"><input id="${id}" class="lp-input" name="${name}" type="datetime-local" value="${value}" ${extra}><button class="lp-datefield__btn" type="button" data-picker="${id}" tabindex="-1" aria-hidden="true">${ICONS.calendar}</button></div>`;
+
 function editLot(lot) {
   if (lot?.bid_count) {
     modal(`<h2 id="modal-title">${esc(lot.name)}</h2><p class="lp-text">${esc(lot.description)}</p>
       <p class="lp-text">${lot.bid_count} bud · højeste bud ${money(lot.current_bid)}<br>Slutter ${date(lot.ends_at)}</p>
-      <p class="lp-help">Makkeren har bud og er låst. Kontakt den tekniske ansvarlige ved fejl; budhistorikken må ikke ændres.</p>`);
+      <p class="lp-help">Auktionen har bud og er låst. Budhistorikken må ikke ændres. Du kan lægge den i papirkurven, hvis den skal fjernes fra siden.</p>
+      <div class="lp-actions"><button class="lp-btn--text lp-btn--icon" type="button" id="lot-trash">${ICONS.trash}Læg i papirkurven</button></div>`);
+    $('#lot-trash').onclick = () => askTrash(lot);
     return;
   }
+  const startsNow = !lot?.starts_at;
   modal(`<p class="lp-eyebrow" style="color: var(--red-text)">Administration</p>
     <h2 id="modal-title">${lot ? 'Rediger auktion' : 'Ny auktion'}</h2>
     <form id="lot-form" class="lp-form">
       <div class="lp-field"><label for="lot-kind">Type</label><select id="lot-kind" class="lp-input" name="kind"><option value="item" ${lot?.kind !== 'partner' ? 'selected' : ''}>Charity-produkt – alle med profil kan byde</option><option value="partner" ${lot?.kind === 'partner' ? 'selected' : ''}>Padelmakker – kun individuelle deltagere kan byde</option></select></div>
       <div class="lp-field"><label for="lot-name">Navn</label><input id="lot-name" class="lp-input" name="name" value="${esc(lot?.name || '')}" minlength="2" maxlength="100" required></div>
       <div class="lp-field"><label for="lot-category">Kategori</label><input id="lot-category" class="lp-input" name="category" value="${esc(lot?.category || '')}" placeholder="Fx Padelspiller, Oplevelse eller Design" maxlength="60" required></div>
-      <div class="lp-field"><label for="lot-image">Billede (HTTPS-adresse)</label><input id="lot-image" class="lp-input" name="image" type="url" pattern="https://.*" value="${esc(lot?.image_url || '')}" required></div>
+      <div class="lp-field">
+        <p class="lp-label">Billede</p>
+        <div class="lp-upload${lot?.image_url ? ' has-image' : ''}" id="lot-upload">
+          <div class="lp-upload__frame">
+            <canvas class="lp-upload__preview" tabindex="0" aria-label="Udsnit af billedet. Brug piletasterne for at flytte det." hidden></canvas>
+            ${lot?.image_url ? `<img class="lp-upload__current${duo(lot)}" src="${esc(safeImage(lot.image_url))}" alt="Nuværende billede">` : '<p class="lp-upload__empty" aria-hidden="true">Intet billede</p>'}
+          </div>
+          <div class="lp-upload__side">
+            <label class="lp-btn lp-btn--secondary lp-btn--small lp-upload__pick">${ICONS.upload}<span>${lot?.image_url ? 'Skift billede' : 'Vælg billede'}</span><input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/heic"></label>
+            <p class="lp-help lp-upload__hint">Eller træk et billede hertil. Det bliver automatisk beskåret til kortformatet og får duotone.</p>
+            <button class="lp-btn--text" type="button" id="image-url-toggle">Brug en billedadresse i stedet</button>
+          </div>
+        </div>
+        <div class="lp-field" id="image-url-field" hidden><label for="lot-image">Billedadresse (https)</label><input id="lot-image" class="lp-input" name="image" type="url" value="${esc(bucketPath(lot?.image_url) ? '' : lot?.image_url || '')}" placeholder="https://"><p class="lp-help">Bruges kun, hvis du ikke uploader et billede.</p></div>
+      </div>
       <div class="lp-field"><label for="lot-description">Beskrivelse</label><textarea id="lot-description" class="lp-input" name="description" minlength="10" maxlength="3000" required>${esc(lot?.description || '')}</textarea></div>
       <div class="lp-field-row">
-        <div class="lp-field"><label for="lot-start">Startpris i kr.</label><input id="lot-start" class="lp-input" name="start" type="number" min="500" max="${MAX_BID}" step="${STEP}" value="${lot?.starting_price || 500}" required></div>
-        <div class="lp-field"><label for="lot-status">Status</label><select id="lot-status" class="lp-input" name="status"><option value="draft">Kladde</option><option value="live" ${lot?.status === 'live' ? 'selected' : ''}>Live</option></select></div>
+        <div class="lp-field"><label for="lot-start">Startpris i kr.</label><div class="lp-stepper lp-stepper--small"><button class="lp-stepper__btn" type="button" data-price="-${STEP}" aria-label="Sænk startprisen med 500 kr.">${ICONS.minus}</button><input id="lot-start" class="lp-input" name="start" type="number" inputmode="numeric" min="500" max="${MAX_BID}" step="${STEP}" value="${lot?.starting_price || 500}" required><button class="lp-stepper__btn" type="button" data-price="${STEP}" aria-label="Hæv startprisen med 500 kr.">${ICONS.plus}</button></div></div>
+        <div class="lp-field"><label for="lot-value">Værdi <span class="lp-optional">(valgfri)</span></label><input id="lot-value" class="lp-input" name="value" maxlength="60" value="${esc(lot?.value_text || '')}" placeholder="Fx Uvurderligt"></div>
       </div>
-      <div class="lp-field"><label for="lot-value">Værdi (valgfri)</label><input id="lot-value" class="lp-input" name="value" maxlength="60" value="${esc(lot?.value_text || '')}" placeholder="Fx Uvurderligt eller 4.000 kr."><p class="lp-help">Vises på charity-produkter.</p></div>
-      <div class="lp-field"><label for="lot-ends">Slutter (dansk tid)</label><input id="lot-ends" class="lp-input" name="ends" type="datetime-local" value="${localDate(lot?.ends_at || new Date(Date.now() + 7 * 86400000))}" required></div>
-      <p class="lp-help">Bud stiger med mindst 500 kr. En live auktion kan ses af alle. Tjek navn, billede og beskrivelse, før du sætter den live.</p>
-      <div><button class="lp-btn lp-btn--primary" type="submit">Gem auktion</button></div>
+      <fieldset class="lp-fieldset">
+        <legend class="lp-label">Tidspunkt (dansk tid)</legend>
+        <label class="lp-check"><input type="checkbox" name="startnow" id="lot-startnow" ${startsNow ? 'checked' : ''}><span>Budgivningen starter, så snart auktionen er live</span></label>
+        <div class="lp-field-row">
+          <div class="lp-field" id="lot-starts-field" ${startsNow ? 'hidden' : ''}><label for="lot-starts">Starter</label>${dateField('lot-starts', 'starts', localDate(lot?.starts_at || new Date(Date.now() + 86400000)))}</div>
+          <div class="lp-field"><label for="lot-ends">Slutter</label>${dateField('lot-ends', 'ends', localDate(lot?.ends_at || new Date(Date.now() + 7 * 86400000)), 'required')}</div>
+        </div>
+        <p class="lp-help">Med en starttid vises auktionen med nedtælling, og der kan først bydes fra starttidspunktet.</p>
+      </fieldset>
+      <div class="lp-field"><label for="lot-status">Status</label><select id="lot-status" class="lp-input" name="status"><option value="draft">Kladde – kun synlig her</option><option value="live" ${lot?.status === 'live' ? 'selected' : ''}>Live – synlig på siden</option></select></div>
+      <p class="lp-help">Bud stiger med mindst 500 kr. Tjek navn, billede og beskrivelse, før du sætter auktionen live.</p>
+      <div class="lp-form__foot"><button class="lp-btn lp-btn--primary" type="submit">Gem auktion</button>${lot ? `<button class="lp-btn--text lp-btn--icon" type="button" id="lot-trash">${ICONS.trash}Læg i papirkurven</button>` : ''}</div>
     </form>`);
-  useForm($('#lot-form'), async (form) => {
+
+  const form = $('#lot-form');
+  const editor = imageEditor($('#lot-upload'), { onError: (error) => toast(errorMessage(error)) });
+  $('#image-url-toggle').onclick = () => {
+    const box = $('#image-url-field');
+    box.hidden = !box.hidden;
+    if (!box.hidden) $('#lot-image').focus();
+  };
+  form.querySelectorAll('[data-picker]').forEach((button) => {
+    button.onclick = () => {
+      const input = $('#' + button.dataset.picker);
+      try {
+        input.showPicker();
+      } catch {
+        input.focus();
+      }
+    };
+  });
+  form.querySelectorAll('[data-price]').forEach((button) => {
+    button.onclick = () => {
+      const input = $('#lot-start');
+      const next = Math.round((Number(input.value) || 0) / STEP) * STEP + Number(button.dataset.price);
+      input.value = Math.min(MAX_BID, Math.max(500, next));
+    };
+  });
+  $('#lot-startnow').onchange = (event) => ($('#lot-starts-field').hidden = event.target.checked);
+  $('#lot-trash')?.addEventListener('click', () => askTrash(lot));
+
+  useForm(form, async () => {
+    const start = Number(field(form, 'start'));
+    if (start < 500 || start > MAX_BID || start % STEP) throw new Error('Startprisen skal være mindst 500 kr. og i hele 500 kr.');
     const ends = danishInstant(field(form, 'ends'));
     if (new Date(ends) <= new Date()) throw new Error('Sluttidspunktet skal ligge i fremtiden.');
+    const starts = $('#lot-startnow').checked ? null : danishInstant(field(form, 'starts'));
+    if (starts && new Date(starts) >= new Date(ends)) throw new Error('Starttidspunktet skal ligge før sluttidspunktet.');
+    const typed = field(form, 'image');
+    if (typed && !/^https:\/\//.test(typed)) throw new Error('Billedadressen skal starte med https://');
+    let image = typed || lot?.image_url || '';
+    if (editor.changed) image = demo ? editor.dataUrl() : await uploadImage(await editor.blob());
+    if (!image) throw new Error('Vælg et billede til auktionen.');
+
     const values = {
       p_id: lot?.id || null,
       p_name: field(form, 'name'),
       p_category: field(form, 'category'),
       p_description: field(form, 'description'),
-      p_image: field(form, 'image'),
+      p_image: image,
+      p_starts: starts,
       p_ends: ends,
-      p_start: Number(field(form, 'start')),
+      p_start: start,
       p_status: field(form, 'status'),
       p_kind: field(form, 'kind'),
       p_value: field(form, 'value') || null,
     };
     if (demo) {
       const next = {
+        ...lot,
         id: lot?.id || crypto.randomUUID(),
         name: values.p_name,
         category: values.p_category,
         description: values.p_description,
-        image_url: values.p_image,
+        image_url: image,
+        starts_at: starts,
         ends_at: ends,
-        starting_price: values.p_start,
+        starting_price: start,
         status: values.p_status,
         kind: values.p_kind,
         value_text: values.p_value,
@@ -727,13 +945,22 @@ function editLot(lot) {
       saveDemo();
     } else {
       let { error } = await client.rpc('save_auction_lot', values);
-      // Before database/auction-items.sql is applied only the old 8-argument function exists.
-      if (error && /PGRST202|could not find/i.test(`${error.code} ${error.message}`)) {
-        const { p_kind, p_value, ...old } = values;
-        if (p_kind === 'item') throw new Error('Charity-produkter kræver, at database/auction-items.sql er kørt i Supabase.');
-        ({ error } = await client.rpc('save_auction_lot', old));
+      // Older databases: without auction-admin-tools.sql there is no start time, without auction-items.sql no kind.
+      if (error && missingFunction(error)) {
+        if (starts) throw new Error('Starttid kræver, at database/auction-admin-tools.sql er kørt i Supabase.');
+        const { p_starts, ...v2 } = values;
+        ({ error } = await client.rpc('save_auction_lot', v2));
+        if (error && missingFunction(error)) {
+          const { p_kind, p_value, ...old } = v2;
+          if (p_kind === 'item') throw new Error('Charity-produkter kræver, at database/auction-items.sql er kørt i Supabase.');
+          ({ error } = await client.rpc('save_auction_lot', old));
+        }
       }
-      if (error) throw error;
+      if (error) {
+        if (editor.changed) await removeImage(image);
+        throw error;
+      }
+      if (lot && lot.image_url !== image) await removeImage(lot.image_url);
       await fetchLots();
     }
     closeModal();
@@ -775,6 +1002,8 @@ setInterval(() => {
     const id = decodeURIComponent(location.hash.slice(9));
     if (lots.find((l) => l.id === id && closed(l))) detail(id);
   }
+  // A start countdown reached zero: show the auction as open.
+  if (!adminPage && [...document.querySelectorAll('[data-starts]')].some((el) => isOver(el.dataset.ends))) render();
 }, 1000);
 
 // Poll for new bids every 10 seconds while the tab is visible.

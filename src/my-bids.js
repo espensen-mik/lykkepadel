@@ -1,5 +1,6 @@
 import { esc, money } from './ui.js';
 import { countdownShort } from './countdown.js';
+import { isProcessed } from './image-crop.js';
 
 // Min side: "Dine bud" – the lots the user has bid on and how they stand.
 const KIND = { partner: 'Padelmakker', item: 'Charity-produkt' };
@@ -23,7 +24,7 @@ export function myBidsHtml(rows) {
           ? `<a class="lp-btn lp-btn--secondary lp-btn--small" href="${href}">Se auktion</a>`
           : `<a class="lp-btn lp-btn--primary lp-btn--small" href="${href}">Byd igen</a>`;
       return `<li class="lp-mybid">
-        <a class="lp-mybid__media" href="${href}" tabindex="-1" aria-hidden="true"><img src="${esc(row.image_url)}" alt="" width="88" height="88" loading="lazy"></a>
+        <a class="lp-mybid__media" href="${href}" tabindex="-1" aria-hidden="true"><img${isProcessed(row.image_url) ? ' class="is-duotone"' : ''} src="${esc(row.image_url)}" alt="" width="88" height="88" loading="lazy"></a>
         <div class="lp-mybid__main">
           <p class="lp-mybid__kind">${KIND[row.kind] || KIND.partner} · ${row.ended ? 'Afsluttet' : `Slutter om ${countdownShort(row.ends_at)}`}</p>
           <a class="lp-mybid__name" href="${href}">${esc(row.name)}</a>
