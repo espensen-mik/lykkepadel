@@ -343,6 +343,24 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-stepper__btn:active { transform: scale(.94); }
 }
 
+
+/* Budhistorik på spillersiden */
+.lp-history { display: flex; flex-direction: column; gap: 14px; }
+.lp-history__title { margin: 0; font: 400 32px/1 var(--font-display); color: var(--ink); }
+.lp-history__lead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding: 20px 24px; background: var(--brown); color: var(--cream); }
+.lp-history__label { margin: 0; font: 400 16px var(--font-display); letter-spacing: 1.5px; color: var(--sand-muted); }
+.lp-history__label--list { color: var(--ink-muted); margin-top: 6px; }
+.lp-history__name { margin: 4px 0 0; font: 400 32px/1 var(--font-display); }
+.lp-history__meta { margin: 6px 0 0; font: 400 13px var(--font-body); color: var(--sand); }
+.lp-history__amount { margin: 0; font: 400 40px/1 var(--font-display); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lp-history__you { font-family: var(--font-body); font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--sand-muted); }
+.lp-history__list { margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--ink); }
+.lp-history__list li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--sand); }
+.lp-history__row-name { margin: 0; font: 700 16px var(--font-body); color: var(--ink); }
+.lp-history__row-name .lp-history__you { color: var(--ink-muted); }
+.lp-history__row-meta { margin: 2px 0 0; font: 400 13px var(--font-body); color: var(--ink-muted); }
+.lp-history__row-amount { margin: 0; font: 600 16px var(--font-body); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
 /* Dialog og toast */
 .lp-dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 0; border: 0; background: var(--cream); color: var(--ink); box-shadow: none; }
 .lp-dialog::backdrop { background: rgba(43, 21, 19, .72); }
@@ -447,6 +465,11 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-bid-stats dd { font-size: 36px; }
   .lp-stepper__btn { width: 48px; height: 48px; }
   .lp-input--big { min-height: 56px; font-size: 34px; }
+
+  /* Budhistorik */
+  .lp-history__lead { padding: 16px 18px; }
+  .lp-history__name { font-size: 26px; }
+  .lp-history__amount { font-size: 30px; }
 
   /* Trin, tidslinje og priskort */
   .lp-steps { gap: 20px; }

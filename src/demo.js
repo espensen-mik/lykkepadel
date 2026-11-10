@@ -9,3 +9,20 @@ export function initialLots() {
  ends_at:new Date(Date.now()+(3+i)*86400000+7200000).toISOString(),starting_price:500,
  current_bid:[3500,5000,2000][i],bid_count:[7,10,4][i],status:'live'}));
 }
+
+// Example bid history for the demo auction. Names are invented.
+const demoNames = ['Smash & Co.', 'Bagvæggen', 'Lykkelig Lars', 'Team Netkant', 'En hemmelig beundrer', 'Volley-Vibeke'];
+export function demoHistory(lot) {
+  if (Array.isArray(lot.history)) return lot.history;
+  const rows = [];
+  const now = Date.now();
+  for (let i = 0; i < lot.bid_count; i++) {
+    rows.push({
+      amount: lot.current_bid - i * 500,
+      created_at: new Date(now - (i + 1) * 5.5 * 3600000).toISOString(),
+      display_name: demoNames[(i + lot.name.length) % demoNames.length],
+      is_mine: false,
+    });
+  }
+  return rows.filter((row) => row.amount >= lot.starting_price);
+}

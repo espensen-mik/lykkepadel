@@ -31,6 +31,25 @@ Efter første Google-login med `mikael@lykkeliga.dk` køres `auction-admin.sql`.
 
 Hold `auction_private` uden for Supabases eksponerede API-schemas.
 
+## Synligt navn og offentlig budhistorik
+
+Kør `bid-history.sql` én gang efter `event-registration.sql`. Den:
+
+- tilføjer kolonnen `display_name` til `auction_profiles` (2–40 tegn, unik uanset store/små bogstaver),
+- tilføjer `set_auction_display_name(p_name)`, som en tilmeldt bruger kalder for at vælge eller skifte sit synlige navn,
+- tilføjer `auction_bid_history(p_lot)`, som alle kan kalde for publicerede auktioner. Den returnerer kun beløb, tidspunkt, synligt navn og `is_mine`, aldrig bruger-id eller kontaktoplysninger. Budgivere uden navn vises som "Anonym budgiver".
+
+Den eksisterende tilmeldingsfunktion er uændret, så siden virker både før og efter filen er kørt. Før kørslen er budhistorikken skjult, og synlige navne gemmes ikke.
+
+Kontrol:
+
+```sql
+select column_name from information_schema.columns where table_name = 'auction_profiles' and column_name = 'display_name';
+select public.auction_bid_history(id) from public.auction_lots where status = 'live' limit 1;
+```
+
+`node --test tests/bid-history.test.mjs` tester navne, unikhed og at historikken ikke afslører identiteter.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.

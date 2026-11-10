@@ -140,6 +140,7 @@ function details() {
       </div>
       <div class="lp-field"><label for="ev-email">Mail</label><input id="ev-email" class="lp-input" name="email" type="email" autocomplete="email" maxlength="254" value="${esc(currentUser?.email || draft.email)}" ${currentUser ? 'readonly' : ''} required><p class="lp-help">Din mail bliver din adgang til Min side. Vi sender en kode hertil, før tilmeldingen gemmes.</p></div>
       <div class="lp-field"><label for="ev-address">Faktureringsadresse</label><textarea id="ev-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required>${esc(draft.address)}</textarea></div>
+      ${draft.type === 'individual' ? `<div class="lp-field"><label for="ev-display">Synligt navn ved bud</label><input id="ev-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" value="${esc(draft.display)}" required><p class="lp-help">Vises ved dine bud på makkerauktionen, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>` : ''}
       ${draft.type === 'pair' ? `<div class="lp-field"><label for="ev-partner">Din makkers fulde navn</label><input id="ev-partner" class="lp-input" name="partner" minlength="2" maxlength="120" value="${esc(draft.partner)}" required></div>` : ''}
       <div class="lp-field"><label for="ev-code">Rabatkode</label><input id="ev-code" class="lp-input" name="code" autocomplete="off" maxlength="80" value="${esc(draft.code)}"><p class="lp-help">Rabatten beregnes, når du fortsætter.</p></div>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Fortsæt</button></div>
@@ -154,8 +155,9 @@ function details() {
   };
   formAction('#event-details', async (form) => {
     const fields = Object.fromEntries(new FormData(form));
-    draft = { ...validateRegistration({ ...fields, type: draft.type }), address: field(form, 'address'), code: field(form, 'code') };
+    draft = { ...validateRegistration({ ...fields, type: draft.type }), address: field(form, 'address'), code: field(form, 'code'), display: field(form, 'display').replace(/\s+/g, ' ') };
     if (draft.address.length < 5) throw new Error('Udfyld din faktureringsadresse.');
+    if (draft.type === 'individual' && (draft.display.length < 2 || draft.display.length > 40)) throw new Error('Det synlige navn skal være mellem 2 og 40 tegn.');
     saveDraft();
     const { data, error } = await client.rpc('event_registration_quote', { p_kind: draft.type, p_code: draft.code });
     if (error) throw error;
@@ -170,6 +172,7 @@ function review() {
   const rows = [
     ['Navn', esc(draft.name)],
     ...(draft.type === 'pair' ? [['Makker', esc(draft.partner)]] : []),
+    ...(draft.type === 'individual' ? [['Synligt navn ved bud', esc(draft.display)]] : []),
     ['Mail', esc(draft.email)],
     ['Telefon', esc(draft.phone)],
     ['Faktureringsadresse', esc(draft.address)],
@@ -211,8 +214,45 @@ async function complete() {
     p_terms: 'registration-test-v1',
   });
   if (error) throw error;
+  let nameProblem = '';
+  if (draft.type === 'individual' && draft.display) {
+    const { error: nameError } = await client.rpc('set_auction_display_name', { p_name: draft.display });
+    if (nameError) nameProblem = nameError.message;
+  }
   sessionStorage.removeItem(DRAFT_KEY);
-  receipt(data);
+  receipt(data, { nameProblem });
+}
+
+async function loadDisplayName() {
+  // The column only exists once database/bid-history.sql has been applied.
+  const { data, error } = await client.from('auction_profiles').select('display_name').eq('user_id', currentUser.id);
+  if (error) return { available: false, name: null };
+  return { available: true, name: data[0]?.display_name || null };
+}
+
+// Min side: show and change the name shown next to the participant's bids.
+async function displayNameSection(r, nameProblem) {
+  if (r.kind !== 'individual' || r.status === 'cancelled') return;
+  const slot = $('#display-name-slot');
+  const { available, name } = await loadDisplayName();
+  if (!available || !slot) return;
+  const render = (current, message = '') => {
+    slot.innerHTML = `<div class="lp-panel" style="flex: 1 1 340px">
+      <p style="margin: 0; font: 400 32px/1 var(--font-display)">Synligt navn ved bud</p>
+      <p class="lp-text">${current ? `Dine bud vises som <strong>${esc(current)}</strong>.` : 'Du har ikke valgt et synligt navn endnu, så dine bud vises som "Anonym budgiver".'}</p>
+      ${message ? `<p class="lp-error" role="alert">${esc(message)}</p>` : ''}
+      <form id="display-name-form" class="lp-form" style="gap: 12px">
+        <div class="lp-field"><label for="display-name">${current ? 'Skift navn' : 'Vælg navn'}</label><input id="display-name" class="lp-input" name="display" minlength="2" maxlength="40" value="${esc(current || '')}" required></div>
+        <div><button class="lp-btn lp-btn--secondary lp-btn--small" type="submit" style="border-width: 3px">Gem navn</button></div>
+      </form>
+    </div>`;
+    formAction('#display-name-form', async (form) => {
+      const { data, error } = await client.rpc('set_auction_display_name', { p_name: field(form, 'display') });
+      if (error) throw error;
+      render(data);
+    });
+  };
+  render(name, nameProblem ? `Vi kunne ikke gemme dit synlige navn: ${nameProblem}` : '');
 }
 
 // Participant login with a one-time code.
@@ -284,7 +324,7 @@ async function sendCode(email, create, onVerified) {
 }
 
 // Min side: the participant's registration.
-function receipt(r) {
+function receipt(r, { nameProblem = '' } = {}) {
   const cancelled = r.status === 'cancelled';
   const first = r.full_name.split(' ')[0];
   document.title = 'Min side – Lykke Padel';
@@ -325,7 +365,9 @@ function receipt(r) {
       ],
       'Skal noget rettes? Skriv til <a href="mailto:info@lykkeliga.dk">info@lykkeliga.dk</a>.',
     )}
+    <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;
+  displayNameSection(r, nameProblem);
   $('#event-logout').onclick = async () => {
     await client.auth.signOut();
     location.href = '/deltager';
