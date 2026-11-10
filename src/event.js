@@ -74,6 +74,12 @@ export async function mountEvent(connectedClient, { participant = false } = {}) 
   main = $('#main');
   document.title = participant ? 'Min side – Lykke Padel' : 'Tilmelding – Lykke Padel';
   setHeader();
+  const params = new URLSearchParams(location.search);
+  if (participant && params.has('logout')) {
+    await client.auth.signOut();
+    history.replaceState(null, '', '/deltager');
+    return login({ loggedOut: true });
+  }
   const { data, error } = await client.auth.getUser();
   currentUser = error ? null : data.user;
   try {
@@ -386,9 +392,10 @@ function loadMyBids() {
 }
 
 // Min side: log in or create a free profile with a one-time code.
-function login() {
+function login({ loggedOut = false } = {}) {
   const content = shell(1, 'Log ind eller opret profil', { names: PROFILE_STEPS });
   content.innerHTML = `<form id="participant-login" class="lp-form" style="max-width: 560px">
+    ${loggedOut ? '<div class="lp-notice" role="status">Du er logget ud.</div>' : ''}
     <p class="lp-lead">Skriv din mail, så sender vi dig en kode. Du skal ikke bruge en adgangskode.</p>
     <p class="lp-text">Er du ny, beder vi bagefter om navn, telefon og faktureringsadresse, så vi kan kontakte dig og sende en faktura, hvis du vinder. Har du allerede en profil, ${NEXT ? 'kommer du direkte tilbage til auktionen' : 'kommer du direkte til Min side'}.</p>
     <div class="lp-field"><label for="login-email">Mail</label><input id="login-email" class="lp-input" name="email" type="email" autocomplete="email" required maxlength="254"></div>
@@ -483,10 +490,7 @@ function profileHome(p) {
     )}
     <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;
-  $('#event-logout').onclick = async () => {
-    await client.auth.signOut();
-    location.href = '/deltager';
-  };
+  $('#event-logout').onclick = () => location.assign('/deltager?logout=1');
   setupContactEdit(p);
   displayNameSection({ status: p.approved ? 'confirmed' : 'cancelled' }, '');
   loadMyBids();
@@ -592,9 +596,6 @@ function receipt(r, { nameProblem = '', detailsProblem = '' } = {}) {
   playerDetailsSection(r, detailsProblem);
   displayNameSection(r, nameProblem);
   loadMyBids();
-  $('#event-logout').onclick = async () => {
-    await client.auth.signOut();
-    location.href = '/deltager';
-  };
+  $('#event-logout').onclick = () => location.assign('/deltager?logout=1');
   window.scrollTo(0, 0);
 }
