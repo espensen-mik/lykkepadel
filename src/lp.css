@@ -550,3 +550,8 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-footer__logo--normal img { height: 48px; }
   .lp-footer__bottom { margin-top: 32px; padding-top: 18px; }
 }
+
+/* Video (Mux) i 16:9 */
+.lp-video-section { display: flex; flex-direction: column; gap: var(--space-7); }
+.lp-video { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.lp-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
