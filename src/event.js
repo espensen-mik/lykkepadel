@@ -93,6 +93,15 @@ export async function mountEvent(connectedClient, { participant = false } = {}) 
     if (rows.length) return NEXT && participant ? location.assign(NEXT) : receipt(rows[0]);
     if (participant) return participantHome();
     draft.email = currentUser.email;
+    // A bidder signing up for the tournament: start from what the profile already knows.
+    const { data: profiles } = await client.from('auction_profiles').select('*').eq('user_id', currentUser.id);
+    const profile = profiles?.[0];
+    if (profile) {
+      draft.name ||= profile.full_name;
+      draft.phone ||= profile.phone;
+      draft.address ||= profile.billing_address;
+      draft.display ||= profile.display_name || '';
+    }
   }
   if (participant) return login();
   choose();
@@ -134,9 +143,9 @@ function choose() {
   });
 }
 
-function summary(rows, note) {
-  return `<aside class="lp-panel" style="flex: 1 1 340px" aria-label="Opsummering">
-    <p style="margin: 0; font: 400 32px/1 var(--font-display)">Din tilmelding</p>
+function summary(rows, note, title = 'Din tilmelding') {
+  return `<aside class="lp-panel" style="flex: 1 1 340px" aria-label="${title}">
+    <p style="margin: 0; font: 400 32px/1 var(--font-display)">${title}</p>
     <dl class="lp-summary">${rows.map(([k, v, total]) => `<div class="${total ? 'is-total' : ''}"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     <p class="lp-help">${note}</p>
   </aside>`;
@@ -463,10 +472,13 @@ function profileHome(p) {
         <h1 class="lp-display lp-display--band">Hej ${esc(p.full_name.split(' ')[0])}</h1>
         <p class="lp-lead">${p.approved ? 'Din profil er klar. Du kan byde på charity-produkterne i Lykke Auktion.' : 'Din budadgang er sat på pause. Kontakt LykkeLiga, hvis det er en fejl.'}</p>
       </div>
-      <dl class="lp-stats">
-        <div><dt>Profil</dt><dd>${p.approved ? 'Aktiv' : 'På pause'}</dd></div>
-        <div><dt>Charity Turnering</dt><dd>Ikke tilmeldt</dd></div>
-      </dl>
+      <div class="lp-hero__side">
+        <dl class="lp-stats">
+          <div><dt>Profil</dt><dd>${p.approved ? 'Aktiv' : 'På pause'}</dd></div>
+          <div><dt>Charity Turnering</dt><dd>Ikke tilmeldt</dd></div>
+        </dl>
+        <a class="lp-btn lp-btn--on-dark lp-btn--block" href="/tilmelding">Tilmeld dig turneringen</a>
+      </div>
     </div>
   </section>
   <section class="lp-wrap lp-section lp-mybids-section" id="dine-bud" aria-label="Dine bud" hidden></section>
@@ -487,6 +499,7 @@ function profileHome(p) {
         ['Faktureringsadresse', esc(p.billing_address)],
       ],
       contactNote(p.approved),
+      'Dine oplysninger',
     )}
     <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;

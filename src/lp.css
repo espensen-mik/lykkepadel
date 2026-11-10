@@ -70,7 +70,8 @@
 .lp-stats { margin: 0; border-top: 1px solid var(--line-dark); }
 .lp-stats > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line-dark); }
 .lp-stats dt { font: 400 15px var(--font-body); color: var(--sand-muted); }
-.lp-stats dd { margin: 0; font: 400 40px/1 var(--font-display); color: var(--cream); font-variant-numeric: tabular-nums; }
+.lp-stats dd { margin: 0; font: 400 40px/1 var(--font-display); color: var(--cream); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.lp-stats dt { flex: none; }
 
 /* CountdownBar */
 .lp-countdown { background: var(--red); color: var(--cream); }
@@ -217,6 +218,7 @@ a { color: var(--red-text); text-underline-offset: 3px; }
 .lp-hero { padding-block: var(--space-8) var(--space-9); display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-7) 64px; }
 .lp-hero > .lp-heading { flex: 999 1 520px; min-width: 0; }
 .lp-hero > .lp-stats { flex: 1 1 300px; min-width: 0; }
+.lp-hero__side { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .lp-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .lp-split { display: flex; flex-wrap: wrap; gap: var(--space-7); align-items: flex-start; }
 .lp-split > * { min-width: 0; }
