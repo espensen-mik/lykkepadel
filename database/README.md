@@ -72,6 +72,14 @@ Før kørslen er sektionen "Dine bud" på Min side bare skjult.
 
 `node --test tests/my-bids.test.mjs` tester listen.
 
+## Charity Turnering: T-shirt, virksomhed og samtykke
+
+Kør `registration-details.sql` én gang efter `event-registration.sql`. Den tilføjer kolonner til `event_registrations`: `shirt_size`, `partner_shirt_size` (XS–3XL), `company`, `partner_company`, `publish_consent` (standard false, så det er et aktivt ja) og `details_updated_at`. Den tilføjer også `set_registration_details(...)`, som deltageren bruger til at gemme eller ændre sine valg på sin egen bekræftede tilmelding.
+
+Før kørslen gemmes valgene ikke, og panelet på Min side og T-shirt-kolonnen i admin er skjult.
+
+`node --test tests/registration-details.test.mjs` tester felterne.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
