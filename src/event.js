@@ -129,6 +129,51 @@ function summary(rows, note) {
   </aside>`;
 }
 
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+
+function sizeSelect(id, name, label, value) {
+  return `<div class="lp-field"><label for="${id}">${label}</label><select id="${id}" class="lp-input" name="${name}" required>
+    <option value="" ${value ? '' : 'selected'} disabled>Vælg størrelse</option>
+    ${SIZES.map((size) => `<option ${size === value ? 'selected' : ''}>${size}</option>`).join('')}
+  </select></div>`;
+}
+
+// T-shirt, company and consent. Used in the registration and on Min side.
+function playerFields(kind, v = {}) {
+  const pair = kind === 'pair';
+  return `<div class="lp-field-row">
+      ${sizeSelect('ev-shirt', 'shirt', pair ? 'Din T-shirt-størrelse' : 'T-shirt-størrelse', v.shirt)}
+      <div class="lp-field"><label for="ev-company">${pair ? 'Din virksomhed' : 'Virksomhed'} <span class="lp-optional">(valgfri)</span></label><input id="ev-company" class="lp-input" name="company" autocomplete="organization" maxlength="120" value="${esc(v.company)}"></div>
+    </div>
+    ${pair ? `<div class="lp-field-row">
+      ${sizeSelect('ev-partner-shirt', 'partnerShirt', 'Makkers T-shirt-størrelse', v.partnerShirt)}
+      <div class="lp-field"><label for="ev-partner-company">Makkers virksomhed <span class="lp-optional">(valgfri)</span></label><input id="ev-partner-company" class="lp-input" name="partnerCompany" maxlength="120" value="${esc(v.partnerCompany)}"></div>
+    </div>` : ''}
+    <p class="lp-help" style="margin-top: -8px">T-shirts er unisex.</p>
+    <label class="lp-check"><input type="checkbox" name="publish" ${v.publish ? 'checked' : ''}><span>${pair ? 'I må gerne nævne vores navne og virksomheder som deltagere, når Lykke Padel bliver promoveret. Jeg har aftalt det med min makker.' : 'I må gerne nævne mit navn og min virksomhed som deltager, når Lykke Padel bliver promoveret.'}</span></label>`;
+}
+
+function readPlayerFields(form, kind) {
+  const value = (name) => (form.elements[name]?.value || '').trim().replace(/\s+/g, ' ');
+  const v = { shirt: value('shirt'), company: value('company'), publish: Boolean(form.elements.publish?.checked) };
+  if (kind === 'pair') Object.assign(v, { partnerShirt: value('partnerShirt'), partnerCompany: value('partnerCompany') });
+  if (!SIZES.includes(v.shirt)) throw new Error('Vælg en T-shirt-størrelse.');
+  if (kind === 'pair' && !SIZES.includes(v.partnerShirt)) throw new Error('Vælg en T-shirt-størrelse til din makker.');
+  return v;
+}
+
+function saveDetails(v) {
+  return client.rpc('set_registration_details', {
+    p_shirt: v.shirt,
+    p_partner_shirt: v.partnerShirt || null,
+    p_company: v.company || null,
+    p_partner_company: v.partnerCompany || null,
+    p_publish: v.publish,
+  });
+}
+
+const publishText = (kind, yes) => (yes ? 'Ja, I må nævne ' + (kind === 'pair' ? 'os' : 'mig') : 'Nej tak');
+
 // Step 2: contact details and discount code.
 function details() {
   const p = packages[draft.type];
@@ -143,6 +188,7 @@ function details() {
       <div class="lp-field"><label for="ev-address">Faktureringsadresse</label><textarea id="ev-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required>${esc(draft.address)}</textarea></div>
       ${true ? `<div class="lp-field"><label for="ev-display">Synligt navn ved bud</label><input id="ev-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" value="${esc(draft.display)}" required><p class="lp-help">Vises ved dine bud i Lykke Auktion, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>` : ''}
       ${draft.type === 'pair' ? `<div class="lp-field"><label for="ev-partner">Din makkers fulde navn</label><input id="ev-partner" class="lp-input" name="partner" minlength="2" maxlength="120" value="${esc(draft.partner)}" required></div>` : ''}
+      ${playerFields(draft.type, draft.player)}
       <div class="lp-field"><label for="ev-code">Rabatkode</label><input id="ev-code" class="lp-input" name="code" autocomplete="off" maxlength="80" value="${esc(draft.code)}"><p class="lp-help">Rabatten beregnes, når du fortsætter.</p></div>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Fortsæt</button></div>
     </form>
@@ -150,13 +196,20 @@ function details() {
   </div>`;
   $('#shell-back').onclick = (event) => {
     event.preventDefault();
-    draft = { ...draft, ...Object.fromEntries(new FormData($('#event-details'))) };
+    const form = $('#event-details');
+    draft = { ...draft, ...Object.fromEntries(new FormData(form)) };
+    try {
+      draft.player = readPlayerFields(form, draft.type);
+    } catch {
+      // Keep what is filled in; it is checked again on Fortsæt.
+    }
     saveDraft();
     choose();
   };
   formAction('#event-details', async (form) => {
     const fields = Object.fromEntries(new FormData(form));
-    draft = { ...validateRegistration({ ...fields, type: draft.type }), address: field(form, 'address'), code: field(form, 'code'), display: field(form, 'display').replace(/\s+/g, ' ') };
+    const player = readPlayerFields(form, draft.type);
+    draft = { ...validateRegistration({ ...fields, type: draft.type }), address: field(form, 'address'), code: field(form, 'code'), display: field(form, 'display').replace(/\s+/g, ' '), player };
     if (draft.address.length < 5) throw new Error('Udfyld din faktureringsadresse.');
     if ((draft.display.length < 2 || draft.display.length > 40)) throw new Error('Det synlige navn skal være mellem 2 og 40 tegn.');
     saveDraft();
@@ -177,6 +230,10 @@ function review() {
     ['Mail', esc(draft.email)],
     ['Telefon', esc(draft.phone)],
     ['Faktureringsadresse', esc(draft.address)],
+    ['T-shirt', esc(draft.type === 'pair' ? `${draft.player.shirt} / makker ${draft.player.partnerShirt}` : draft.player.shirt)],
+    ...(draft.player.company ? [['Virksomhed', esc(draft.player.company)]] : []),
+    ...(draft.player.partnerCompany ? [['Makkers virksomhed', esc(draft.player.partnerCompany)]] : []),
+    ['Må nævnes i promovering', publishText(draft.type, draft.player.publish)],
   ];
   content.innerHTML = `<div class="lp-split">
     <form id="event-confirm" class="lp-form" style="flex: 999 1 520px">
@@ -220,8 +277,15 @@ async function complete() {
     const { error: nameError } = await client.rpc('set_auction_display_name', { p_name: draft.display });
     if (nameError) nameProblem = nameError.message;
   }
+  let registration = data;
+  let detailsProblem = '';
+  if (draft.player) {
+    const { data: saved, error: detailsError } = await saveDetails(draft.player);
+    if (saved) registration = saved;
+    else if (detailsError && !/PGRST202|could not find/i.test(`${detailsError.code} ${detailsError.message}`)) detailsProblem = detailsError.message;
+  }
   sessionStorage.removeItem(DRAFT_KEY);
-  receipt(data, { nameProblem });
+  receipt(registration, { nameProblem, detailsProblem });
 }
 
 async function loadDisplayName() {
@@ -254,6 +318,31 @@ async function displayNameSection(r, nameProblem) {
     });
   };
   render(name, nameProblem ? `Vi kunne ikke gemme dit synlige navn: ${nameProblem}` : '');
+}
+
+// Min side: T-shirt, company and consent. Only once database/registration-details.sql is applied.
+function playerDetailsSection(r, problem) {
+  const slot = $('#player-details-slot');
+  if (!slot || r.status === 'cancelled' || !('shirt_size' in r)) return;
+  const render = (reg, message = '', saved = false) => {
+    const missing = !reg.shirt_size || (reg.kind === 'pair' && !reg.partner_shirt_size);
+    slot.innerHTML = `<div class="lp-panel" style="flex: 1 1 340px" id="spiller">
+      <p style="margin: 0; font: 400 32px/1 var(--font-display)">T-shirt og synlighed</p>
+      ${missing ? '<div class="lp-notice">Vælg T-shirt-størrelse, så vi kan bestille den rigtige.</div>' : '<p class="lp-text">Du kan ændre dine valg her frem til eventet.</p>'}
+      ${message ? `<p class="lp-error" role="alert">${esc(message)}</p>` : ''}
+      ${saved ? '<p class="lp-help" role="status">Gemt.</p>' : ''}
+      <form id="player-details-form" class="lp-form" style="gap: 16px">
+        ${playerFields(reg.kind, { shirt: reg.shirt_size, partnerShirt: reg.partner_shirt_size, company: reg.company, partnerCompany: reg.partner_company, publish: reg.publish_consent })}
+        <div><button class="lp-btn lp-btn--secondary lp-btn--small" type="submit" style="border-width: 3px">Gem</button></div>
+      </form>
+    </div>`;
+    formAction('#player-details-form', async (form) => {
+      const { data, error } = await saveDetails(readPlayerFields(form, reg.kind));
+      if (error) throw error;
+      render(data, '', true);
+    });
+  };
+  render(r, problem ? `Vi kunne ikke gemme T-shirt og synlighed: ${problem}` : '');
 }
 
 // Min side: show "Dine bud" once the list has loaded.
@@ -352,7 +441,7 @@ function profileHome(p) {
         ['Telefon', esc(p.phone)],
         ['Faktureringsadresse', esc(p.billing_address)],
       ],
-      'Skal noget rettes? Skriv til <a href="mailto:info@lykkeliga.dk">info@lykkeliga.dk</a>.',
+      'Skal noget rettes? Skriv til <a href="mailto:signe@lykkeliga.dk">signe@lykkeliga.dk</a>.',
     )}
     <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;
@@ -412,7 +501,7 @@ async function sendCode(email, create, onVerified, registering = create) {
 }
 
 // Min side: the participant's registration.
-function receipt(r, { nameProblem = '' } = {}) {
+function receipt(r, { nameProblem = '', detailsProblem = '' } = {}) {
   const cancelled = r.status === 'cancelled';
   const first = r.full_name.split(' ')[0];
   document.title = 'Min side – Lykke Padel';
@@ -451,11 +540,14 @@ function receipt(r, { nameProblem = '' } = {}) {
         ['Mail', esc(r.email)],
         ['Telefon', esc(r.phone)],
         ['Betalt', `${money(r.amount_due)}${r.discount_code ? ' (rabatkode)' : ''}`],
+        ...(r.shirt_size ? [['T-shirt', esc(r.partner_shirt_size ? `${r.shirt_size} / makker ${r.partner_shirt_size}` : r.shirt_size)]] : []),
       ],
-      'Skal noget rettes? Skriv til <a href="mailto:info@lykkeliga.dk">info@lykkeliga.dk</a>.',
+      'Skal noget rettes? Skriv til <a href="mailto:signe@lykkeliga.dk">signe@lykkeliga.dk</a>.',
     )}
+    <div id="player-details-slot" style="flex: 1 1 100%; display: flex"></div>
     <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;
+  playerDetailsSection(r, detailsProblem);
   displayNameSection(r, nameProblem);
   loadMyBids();
   $('#event-logout').onclick = async () => {

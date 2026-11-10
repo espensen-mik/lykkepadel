@@ -226,6 +226,7 @@ a { color: var(--red-text); text-underline-offset: 3px; }
 .lp-btn:disabled { opacity: .55; cursor: wait; }
 .lp-btn--text { min-height: var(--touch-min); padding: 0 4px; background: none; border: 0; color: var(--red-text); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
 .lp-input:focus { outline: 2px solid var(--red-deep); outline-offset: 2px; }
+.lp-optional { font-weight: 400; color: var(--ink-muted); }
 select.lp-input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 44px; }
 .lp-field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-5); }
 .lp-form { display: flex; flex-direction: column; gap: var(--space-5); }

@@ -4,7 +4,7 @@ import { initialLots, demoHistory } from './demo.js';
 import { termsFor, keyTerms, stepsFor, faqFor } from './terms.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
-import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setTestbar, setHeader } from './ui.js';
+import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setTestbar, setHeader, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
 const path = location.pathname;
@@ -263,7 +263,7 @@ function bidAccessNotice(lot) {
     return `<div class="lp-notice" style="flex-direction: column"><span>Log ind med din mail, eller opret en gratis profil, for at byde. Det tager et minut.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="/deltager">Log ind eller opret profil</a></span></div>`;
   if (!profile)
     return `<div class="lp-notice">Opret din gratis budprofil for at byde. <a href="/deltager">Opret profil</a></div>`;
-  if (profile.approved !== true) return `<div class="lp-notice">Din budadgang er sat på pause. Kontakt LykkeLiga på info@lykkeliga.dk.</div>`;
+  if (profile.approved !== true) return `<div class="lp-notice">Din budadgang er sat på pause. Kontakt LykkeLiga på signe@lykkeliga.dk.</div>`;
   return `<div class="lp-notice">Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Makkerpar kan byde på charity-produkterne. <a href="/tilmelding">Se tilmelding</a></div>`;
 }
 
@@ -639,15 +639,7 @@ async function adminWinners(body) {
   </table></div>`;
   $('#export').onclick = () => {
     const keys = ['name', 'amount', 'full_name', 'email', 'phone', 'billing_address'];
-    // Neutralise leading spreadsheet formula characters.
-    const cell = (v) => '"' + String(v ?? '').replace(/^[=+@\-\t\r]/, "' $&").replaceAll('"', '""') + '"';
-    const csv = '﻿' + [keys.join(';'), ...winners.map((w) => keys.map((k) => cell(w[k])).join(';'))].join('\r\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'lykke-padel-fakturagrundlag.csv';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadCsv('lykke-padel-fakturagrundlag.csv', keys, winners.map((w) => keys.map((k) => w[k])));
   };
 }
 
