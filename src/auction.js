@@ -105,15 +105,10 @@ function instagram(lot) {
 
 function updateHeader() {
   if (adminPage) {
-    setHeader({
-      loginText: user ? 'Log ud' : 'Log ind',
-      loginHref: '/admin',
-      onLogin: user ? logout : showAdminLogin,
-      showSignup: false,
-    });
+    setHeader({ loggedIn: Boolean(user), text: user ? 'Log ud' : 'Log ind', href: '/admin', onClick: user ? logout : showAdminLogin });
     return;
   }
-  setHeader({ loginText: user ? 'Min side' : 'Log ind', showSignup: !eventAccess });
+  setHeader({ loggedIn: Boolean(user) });
 }
 
 async function logout() {
@@ -816,7 +811,7 @@ async function start() {
   if (response.status === 404 && !adminPage && !registrationPage && !participantPage) return startDemo();
   if (!response.ok) {
     main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty"><h1 class="lp-display lp-display--s">${registrationPage ? 'Tilmeldingen er ikke åben endnu' : 'Siden er ikke åben endnu'}</h1><p class="lp-text">Vi gør klar. Kig forbi igen senere.</p><a class="lp-btn lp-btn--primary" href="/forsidetest">Til forsiden</a></div></div>`;
-    setHeader({ showSignup: false });
+    setHeader();
     return;
   }
   const config = await response.json();

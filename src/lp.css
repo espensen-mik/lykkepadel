@@ -45,7 +45,12 @@
 .lp-nav a { color: var(--sand); text-decoration: none; }
 .lp-nav a[aria-current="page"] { color: var(--cream); text-decoration: underline; text-underline-offset: 6px; }
 .lp-header__actions { display: flex; align-items: center; gap: 8px; }
-.lp-header__login { color: var(--sand); font: 600 15px var(--font-body); padding: 12px 10px; }
+.lp-account { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px 0 12px; border: 2px solid var(--line-dark); border-radius: 999px; color: var(--cream); font: 600 15px var(--font-body); text-decoration: none; transition: background-color 200ms var(--ease, ease), border-color 200ms var(--ease, ease), color 200ms var(--ease, ease); }
+.lp-account__icon { flex: none; }
+.lp-account:hover, .lp-account[aria-current="page"] { border-color: var(--cream); }
+.lp-account.is-logged-in { background: var(--cream); border-color: var(--cream); color: var(--brown); }
+.lp-account.is-logged-in:hover { background: var(--sand); border-color: var(--sand); }
+.lp-account:focus-visible { outline: 3px solid var(--red-light); outline-offset: 3px; }
 
 /* SectionHeading */
 .lp-heading { display: flex; flex-direction: column; gap: 20px; }
@@ -302,13 +307,13 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
 .lp-chip[aria-pressed="true"]:hover { background: var(--red-text); }
 
 /* Menu og footer: en streg, der tegnes ind fra venstre */
-.lp-nav a, .lp-header__login, .lp-footer__bottom a {
+.lp-nav a, .lp-footer__bottom a {
   text-decoration: none;
   background: linear-gradient(currentColor, currentColor) 0 100% / 0 2px no-repeat;
   padding-bottom: 3px;
 }
-.lp-nav a:hover, .lp-header__login:hover, .lp-footer__bottom a:hover { color: var(--cream); background-size: 100% 2px; }
-.lp-nav a[aria-current="page"], .lp-header__login[aria-current="page"] { text-decoration: none; background-size: 100% 2px; }
+.lp-nav a:hover, .lp-footer__bottom a:hover { color: var(--cream); background-size: 100% 2px; }
+.lp-nav a[aria-current="page"] { text-decoration: none; background-size: 100% 2px; }
 
 /* Tilbage-link: pilen skubbes en anelse */
 .lp-back:hover { color: var(--red-text); }
@@ -323,7 +328,7 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-btn, .lp-chip { transition: background-color 200ms var(--ease), color 200ms var(--ease), border-color 200ms var(--ease), transform 200ms var(--ease); }
   .lp-btn:hover { transform: translateY(-1px); }
   .lp-btn:active { transform: translateY(0); transition-duration: 60ms; }
-  .lp-nav a, .lp-header__login, .lp-footer__bottom a, .lp-lot__name { transition: background-size 280ms var(--ease), color 200ms var(--ease); }
+  .lp-nav a, .lp-footer__bottom a, .lp-lot__name { transition: background-size 280ms var(--ease), color 200ms var(--ease); }
   .lp-back { transition: color 200ms var(--ease), transform 200ms var(--ease); }
   .lp-back:hover { transform: translateX(-3px); }
   .lp-lot__media img, .lp-player .lp-lot__media img { transition: transform 600ms var(--ease); }
@@ -432,8 +437,7 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-header__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; padding-block: 12px; }
   .lp-header__logo img { height: 18px; }
   .lp-header__actions { grid-column: 2; grid-row: 1; gap: 2px; }
-  .lp-header__login { padding: 10px 8px; font-size: 14px; }
-  .lp-header .lp-btn--small { min-height: 40px; padding: 0 14px; font-size: 14px; }
+  .lp-account { min-height: 38px; padding: 0 12px 0 10px; gap: 6px; font-size: 14px; }
   .lp-nav { grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; overflow-x: auto; gap: 20px; font-size: 14px; scrollbar-width: none; }
   .lp-nav a { white-space: nowrap; }
 }
