@@ -14,7 +14,7 @@ const participantPage = /^\/deltager\/?$/.test(path);
 if (path.startsWith('/administration')) history.replaceState(null, '', '/admin' + location.search + location.hash);
 
 const main = $('#main');
-const DEMO_KEY = 'lykke-auction-demo-makkere-v2';
+const DEMO_KEY = 'lykke-auction-demo-v3';
 const STEP = 500;
 const MAX_BID = 10000000;
 
@@ -25,7 +25,8 @@ let profile = null;
 let eventAccess = false;
 let isAdmin = false;
 let lots = [];
-let filter = 'Alle';
+const typeParam = new URLSearchParams(location.search).get('type');
+let filter = typeParam === 'makkere' ? 'partner' : typeParam === 'produkter' ? 'item' : 'Alle';
 let adminTab = 'lots';
 let polling = false;
 
@@ -77,7 +78,8 @@ const liveLots = () => lots.filter((lot) => lot.status === 'live');
 const closed = (lot) => isOver(lot.ends_at);
 const minimum = (lot) => (lot.bid_count ? lot.current_bid + STEP : lot.starting_price);
 const firstName = (lot) => lot.name.split(' ')[0];
-const canBid = () => demo || (eventAccess && profile?.approved === true);
+// Charity products need an active profile; padel partners also need an individual tournament registration.
+const canBid = (lot) => demo || (profile?.approved === true && (lot.kind === 'item' || eventAccess));
 
 function safeImage(value) {
   try {
@@ -123,8 +125,12 @@ async function logout() {
 
 // ---------- Auction overview ----------
 
+const KINDS = { partner: 'Padelmakkere', item: 'Charity-produkter' };
+const kindOf = (lot) => (lot.kind === 'item' ? 'item' : 'partner');
+
 function lotCard(lot, index) {
   const over = closed(lot);
+  const item = kindOf(lot) === 'item';
   return `<article class="lp-lot">
     <a class="lp-lot__link" href="${link(lot.id)}">
       <div class="lp-lot__media">
@@ -133,6 +139,7 @@ function lotCard(lot, index) {
       </div>
       <div class="lp-lot__body">
         <h3 class="lp-lot__name">${esc(lot.name)}</h3>
+        ${item && lot.value_text ? `<p class="lp-lot__value">Værdi: ${esc(lot.value_text)}</p>` : ''}
         <div class="lp-lot__bid">
           <div>
             <p class="lp-lot__meta">${lot.bid_count ? `Højeste bud · ${lot.bid_count} bud` : 'Startpris'}</p>
@@ -140,7 +147,7 @@ function lotCard(lot, index) {
           </div>
           <p class="lp-lot__ends">${over ? 'Auktionen<br>er slut' : `Slutter om<br><span data-countdown="short" data-ends="${esc(lot.ends_at)}">${countdownShort(lot.ends_at)}</span>`}</p>
         </div>
-        <span class="lp-btn lp-btn--primary lp-btn--block">${over ? 'Se resultat' : `Byd på ${esc(firstName(lot))}`}</span>
+        <span class="lp-btn lp-btn--primary lp-btn--block">${over ? 'Se resultat' : item ? 'Se og byd' : `Byd på ${esc(firstName(lot))}`}</span>
       </div>
     </a>
   </article>`;
@@ -148,13 +155,13 @@ function lotCard(lot, index) {
 
 const soonCard = `<article class="lp-lot lp-lot--soon">
   <p class="lp-lot__mark" aria-hidden="true">?</p>
-  <h3 class="lp-lot__name">Flere makkere</h3>
+  <h3 class="lp-lot__name">Flere auktioner</h3>
   <p class="lp-lot__meta">Afsløres snart</p>
 </article>`;
 
 function countdownSection(visible) {
   const upcoming = visible.filter((lot) => !closed(lot)).sort((a, b) => new Date(a.ends_at) - new Date(b.ends_at))[0];
-  const label = !visible.length ? 'Makkerne afsløres snart' : upcoming ? (visible.length > 1 ? 'Næste auktion slutter om' : 'Auktionen slutter om') : 'Auktionen er afsluttet';
+  const label = !visible.length ? 'Auktionerne afsløres snart' : upcoming ? (visible.length > 1 ? 'Næste auktion slutter om' : 'Auktionen slutter om') : 'Auktionen er afsluttet';
   return `<section class="lp-countdown" aria-label="Nedtælling">
     <div class="lp-wrap lp-countdown__inner">
       <p class="lp-countdown__label">${label}</p>
@@ -165,11 +172,11 @@ function countdownSection(visible) {
 }
 
 function listing() {
-  document.title = 'Makkerauktion – Lykke Padel';
+  document.title = 'Lykke Auktion – Lykke Padel';
   const visible = liveLots().sort((a, b) => new Date(a.ends_at) - new Date(b.ends_at));
-  const categories = [...new Set(visible.map((lot) => lot.category))];
-  if (!categories.includes(filter)) filter = 'Alle';
-  const shown = filter === 'Alle' ? visible : visible.filter((lot) => lot.category === filter);
+  const kinds = Object.keys(KINDS).filter((k) => visible.some((lot) => kindOf(lot) === k));
+  if (filter !== 'Alle' && !kinds.includes(filter)) filter = 'Alle';
+  const shown = filter === 'Alle' ? visible : visible.filter((lot) => kindOf(lot) === filter);
   const totalBids = visible.reduce((sum, lot) => sum + lot.bid_count, 0);
   const totalAmount = visible.reduce((sum, lot) => sum + (lot.bid_count ? lot.current_bid : 0), 0);
 
@@ -177,41 +184,41 @@ function listing() {
   <section class="lp-band-brown">
     <div class="lp-wrap lp-hero">
       <div class="lp-heading">
-        <p class="lp-eyebrow">${visible.length ? 'Makkerauktionen er åben' : 'Makkerauktion'}</p>
-        <h1 class="lp-display lp-display--hero">Find din lykkemakker</h1>
-        <p class="lp-lead">Byd på en plads ved siden af Danmarks padelprofiler og kendte ansigter. Pengene går ubeskåret til LykkeLiga.</p>
+        <p class="lp-eyebrow">${visible.length ? 'Auktionen er åben' : 'Charity-auktion'}</p>
+        <h1 class="lp-display lp-display--hero">Lykke Auktion</h1>
+        <p class="lp-lead">Byd på unikke oplevelser, særlige ting og en plads ved siden af Danmarks padelprofiler. Hele beløbet går ubeskåret til LykkeLiga.</p>
         <div class="lp-actions">
-          <a class="lp-btn lp-btn--on-dark lp-btn--large" href="#makkerne">Se makkerne</a>
-          <a class="lp-btn lp-btn--outline-dark lp-btn--large" href="#saadan">Sådan virker det</a>
+          <a class="lp-btn lp-btn--on-dark lp-btn--large" href="#auktioner">Se auktionerne</a>
+          <a class="lp-btn lp-btn--outline-dark lp-btn--large" href="#saadan">Sådan byder du</a>
         </div>
       </div>
       <dl class="lp-stats">
         <div><dt>Samlede bud</dt><dd>${money(totalAmount)}</dd></div>
         <div><dt>Antal bud</dt><dd>${totalBids}</dd></div>
-        <div><dt>Spillere på dagen</dt><dd>Ca. 70</dd></div>
+        <div><dt>Auktioner</dt><dd>${visible.length}</dd></div>
       </dl>
     </div>
   </section>
   ${countdownSection(visible)}
-  <section class="lp-band-cream" id="makkerne">
+  <section class="lp-band-cream" id="auktioner">
     <div class="lp-wrap lp-section">
       <div class="lp-section-head">
-        <h2 class="lp-display">Makkerne</h2>
-        ${categories.length > 1 ? `<div class="lp-chips" role="group" aria-label="Filtrer makkere">${['Alle', ...categories].map((c) => `<button class="lp-chip" type="button" data-filter="${esc(c)}" aria-pressed="${c === filter}">${esc(c)}</button>`).join('')}</div>` : ''}
+        <h2 class="lp-display">Auktionerne</h2>
+        ${kinds.length > 1 ? `<div class="lp-chips" role="group" aria-label="Filtrer auktioner">${['Alle', ...kinds].map((k) => `<button class="lp-chip" type="button" data-filter="${k}" aria-pressed="${k === filter}">${k === 'Alle' ? 'Alle' : KINDS[k]}</button>`).join('')}</div>` : ''}
       </div>
-      <p class="lp-text" style="margin-top: 20px; max-width: 640px">Kun individuelt tilmeldte kan byde. Du byder i hele 500 kr., og højeste bud, når tiden udløber, vinder makkeren for dagen.</p>
+      <p class="lp-text" style="margin-top: 20px; max-width: 680px">Alle med en gratis profil kan byde på charity-produkterne. Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Du byder i hele 500 kr., og højeste bud, når tiden udløber, vinder.</p>
       ${visible.length
         ? `<div class="lp-lots" style="margin-top: 48px">${shown.map(lotCard).join('')}${visible.length < 6 && filter === 'Alle' ? soonCard : ''}</div>`
-        : `<div class="lp-empty" style="margin-top: 48px"><p class="lp-text">Makkerne bliver offentliggjort her, når LykkeLiga åbner auktionen.</p><a class="lp-btn lp-btn--primary" href="/tilmelding">Tilmeld dig</a></div>`}
+        : `<div class="lp-empty" style="margin-top: 48px"><p class="lp-text">Auktionerne bliver offentliggjort her, når LykkeLiga åbner dem.</p><a class="lp-btn lp-btn--primary" href="/deltager">Opret gratis profil</a></div>`}
     </div>
   </section>
   <section class="lp-band-cream lp-section--rule" id="saadan">
     <div class="lp-wrap lp-section">
-      <h2 class="lp-display" style="font-size: clamp(52px, 6vw, 88px); margin-bottom: 40px">Sådan får du en makker</h2>
+      <h2 class="lp-display" style="font-size: clamp(52px, 6vw, 88px); margin-bottom: 40px">Sådan byder du</h2>
       <ol class="lp-steps">
-        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">1</p><div><h3 class="lp-step__title">Tilmeld dig individuelt</h3><p class="lp-step__text">En individuel plads koster 10.000 kr. og giver adgang til at byde.</p></div></li>
-        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">2</p><div><h3 class="lp-step__title">Byd på din drømmemakker</h3><p class="lp-step__text">Følg auktionen og byd, så længe nedtællingen kører.</p></div></li>
-        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">3</p><div><h3 class="lp-step__title">Spil sammen 2. april</h3><p class="lp-step__text">Vinder du ikke, matcher vi dig med en makker på dit niveau.</p></div></li>
+        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">1</p><div><h3 class="lp-step__title">Opret en gratis profil</h3><p class="lp-step__text">Log ind med din mail, og vælg det navn, dine bud skal vises med. <a href="/deltager">Opret profil</a></p></div></li>
+        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">2</p><div><h3 class="lp-step__title">Byd på charity-produkter</h3><p class="lp-step__text">Følg med i budhistorikken, og byd, så længe nedtællingen kører.</p></div></li>
+        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">3</p><div><h3 class="lp-step__title">Vil du have en padelmakker?</h3><p class="lp-step__text">Tilmeld dig Charity Turnering individuelt, så kan du også byde på padelmakkerne. <a href="/charity-turnering">Om turneringen</a></p></div></li>
       </ol>
     </div>
   </section>
@@ -219,27 +226,23 @@ function listing() {
     <div class="lp-wrap lp-section" style="display: flex; flex-direction: column; gap: 48px">
       <div class="lp-section-head">
         <div class="lp-heading">
-          <p class="lp-eyebrow">Om dagen</p>
-          <h2 class="lp-display lp-display--band">Padel i Pakhus77</h2>
+          <p class="lp-eyebrow">2. april 2027 · Pakhus77, Aarhus</p>
+          <h2 class="lp-display lp-display--band">Én dag, to dele</h2>
         </div>
-        <p class="lp-lead" style="max-width: 440px">Én dag, to etaper: padelturnering for erhvervslivet om eftermiddagen, og showkamp og charity-fest for alle fra kl. 16.00.</p>
+        <p class="lp-lead" style="max-width: 460px">Charity Turnering for deltagerne om eftermiddagen og Charity Showkamp for op til 500 tilskuere fra kl. 16.00.</p>
       </div>
       <figure class="lp-photo"><img src="/images/pakhus77.jpeg" alt="Padelbaner i Pakhus77" width="1015" height="425" loading="lazy"><figcaption>Pakhus77, Aarhus</figcaption></figure>
-      <dl class="lp-facts">
-        <div><dt>Dato</dt><dd>2. april 2027</dd></div>
-        <div><dt>Sted</dt><dd>Pakhus77, Aarhus</dd></div>
-        <div><dt>Inkluderet</dt><dd class="lp-facts__text">Turnering, forplejning, T-shirt, goodiebag, præmier, networking og VIP-adgang til etape 2. <a href="/om-dagen" style="color: var(--cream)">Læs om dagen</a></dd></div>
-      </dl>
+      <div class="lp-actions"><a class="lp-btn lp-btn--on-dark" href="/charity-turnering">Charity Turnering</a><a class="lp-btn lp-btn--outline-dark" href="/charity-showkamp">Charity Showkamp</a></div>
     </div>
   </section>
   <section class="lp-band-red">
     <div class="lp-wrap" style="padding-block: var(--space-band); display: flex; flex-wrap: wrap; gap: 40px; align-items: center">
       <div style="flex: 999 1 420px; min-width: 0">
-        <h2 class="lp-display lp-display--band">En plads på banen.<br>En forskel for andre.</h2>
-        <p class="lp-big-note">Turnering, forplejning, T-shirt, goodiebag, præmier og VIP-adgang til etape 2.</p>
+        <h2 class="lp-display lp-display--band">Spil med i Charity Turnering</h2>
+        <p class="lp-big-note">Individuel deltagelse giver adgang til at byde på padelmakkerne.</p>
       </div>
       <div class="lp-prices" style="flex: 1 1 520px">
-        <div class="lp-price"><p class="lp-price__meta">1 spiller · kan byde</p><p class="lp-price__name">Individuel</p><p class="lp-price__amount">10.000 kr.</p><a class="lp-btn lp-btn--primary lp-btn--block" href="/tilmelding?type=individual">Vælg individuel</a></div>
+        <div class="lp-price"><p class="lp-price__meta">1 spiller · kan byde på makkere</p><p class="lp-price__name">Individuel</p><p class="lp-price__amount">10.000 kr.</p><a class="lp-btn lp-btn--primary lp-btn--block" href="/tilmelding?type=individual">Vælg individuel</a></div>
         <div class="lp-price"><p class="lp-price__meta">2 spillere · fast makkerpar</p><p class="lp-price__name">Makkerpar</p><p class="lp-price__amount">25.000 kr.</p><a class="lp-btn lp-btn--secondary lp-btn--block" href="/tilmelding?type=pair">Vælg makkerpar</a></div>
       </div>
     </div>
@@ -249,19 +252,23 @@ function listing() {
     button.onclick = () => {
       filter = button.dataset.filter;
       listing();
-      $('#makkerne').scrollIntoView();
+      $('#auktioner').scrollIntoView();
     };
   });
 }
 
 // ---------- Player page ----------
 
-function bidAccessNotice() {
+function bidAccessNotice(lot) {
+  const partner = kindOf(lot) === 'partner';
+  if (!user && partner)
+    return `<div class="lp-notice" style="flex-direction: column"><span>Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Er du tilmeldt, så log ind med din mail.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="/deltager">Log ind</a><a class="lp-btn lp-btn--secondary lp-btn--small" href="/tilmelding">Tilmeld dig</a></span></div>`;
   if (!user)
-    return `<div class="lp-notice" style="flex-direction: column"><span>Kun individuelt tilmeldte deltagere kan byde. Er du tilmeldt, så log ind med din mail.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="/deltager">Log ind</a><a class="lp-btn lp-btn--secondary lp-btn--small" href="/tilmelding">Tilmeld dig</a></span></div>`;
-  if (!eventAccess)
-    return `<div class="lp-notice">Din konto har ikke en individuel tilmelding, som giver budret. Makkerpar kan ikke byde. <a href="/tilmelding">Se tilmelding</a></div>`;
-  return `<div class="lp-notice">Din budadgang er sat på pause. Kontakt LykkeLiga på info@lykkeliga.dk.</div>`;
+    return `<div class="lp-notice" style="flex-direction: column"><span>Log ind med din mail, eller opret en gratis profil, for at byde. Det tager et minut.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="/deltager">Log ind eller opret profil</a></span></div>`;
+  if (!profile)
+    return `<div class="lp-notice">Opret din gratis budprofil for at byde. <a href="/deltager">Opret profil</a></div>`;
+  if (profile.approved !== true) return `<div class="lp-notice">Din budadgang er sat på pause. Kontakt LykkeLiga på info@lykkeliga.dk.</div>`;
+  return `<div class="lp-notice">Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Makkerpar kan byde på charity-produkterne. <a href="/tilmelding">Se tilmelding</a></div>`;
 }
 
 function bidForm(lot) {
@@ -288,17 +295,18 @@ function bidForm(lot) {
 function detail(id) {
   const lot = lots.find((l) => l.id === id && (l.status === 'live' || isAdmin));
   if (!lot) {
-    main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty"><h1 class="lp-display lp-display--s">Ingen makker her</h1><p class="lp-text">Auktionen findes ikke eller er ikke offentliggjort endnu.</p><a class="lp-btn lp-btn--primary" href="${link()}">Se alle makkere</a></div></div>`;
+    main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty"><h1 class="lp-display lp-display--s">Ingen auktion her</h1><p class="lp-text">Auktionen findes ikke eller er ikke offentliggjort endnu.</p><a class="lp-btn lp-btn--primary" href="${link()}">Se hele auktionen</a></div></div>`;
     return;
   }
-  document.title = `${lot.name} – Makkerauktion – Lykke Padel`;
+  document.title = `${lot.name} – Lykke Auktion – Lykke Padel`;
   const over = closed(lot);
+  const item = kindOf(lot) === 'item';
   const others = liveLots().filter((l) => l.id !== lot.id).slice(0, 3);
-  const meta = [esc(lot.category), instagram(lot)].filter(Boolean).join(' · ');
+  const meta = [esc(lot.category), item && lot.value_text ? `Værdi: ${esc(lot.value_text)}` : '', instagram(lot)].filter(Boolean).join(' · ');
 
   main.innerHTML = `
   <div class="lp-wrap" style="padding-block: 28px var(--space-9)">
-    <a class="lp-back" href="${link()}">← Alle makkere</a>
+    <a class="lp-back" href="${link()}">← Hele auktionen</a>
     <div class="lp-split" style="margin-top: 20px">
       <div class="lp-lot__media lp-detail-media">
         <img src="${esc(safeImage(lot.image_url))}" alt="${esc(lot.name)}">
@@ -306,10 +314,11 @@ function detail(id) {
       </div>
       <div class="lp-detail-body">
         <div style="display: flex; flex-direction: column; gap: 12px">
+          <p class="lp-eyebrow" style="color: var(--red-text)">${item ? 'Charity-produkt' : 'Padelmakker · kun for deltagere i Charity Turnering'}</p>
           <h1 class="lp-detail-name">${esc(lot.name)}</h1>
           <p class="lp-lot__insta">${meta}</p>
         </div>
-        <p class="lp-text">${esc(lot.description)}</p>
+        <p class="lp-text" style="white-space: pre-line">${esc(lot.description)}</p>
         <section class="lp-panel" aria-label="Bud på ${esc(lot.name)}">
           <dl class="lp-bid-stats">
             <div><dt>${lot.bid_count ? 'Højeste bud' : 'Startpris'}</dt><dd class="is-amount">${money(lot.current_bid || lot.starting_price)}</dd></div>
@@ -317,16 +326,16 @@ function detail(id) {
             <div><dt>${over ? 'Status' : 'Slutter om'}</dt><dd>${over ? 'Slut' : `<span data-countdown="short" data-ends="${esc(lot.ends_at)}">${countdownShort(lot.ends_at)}</span>`}</dd></div>
           </dl>
           <p class="lp-help">${over ? `Auktionen sluttede ${date(lot.ends_at)}. Der kan ikke afgives flere bud.` : `Slutter ${date(lot.ends_at)} (dansk tid). Højeste bud, når tiden udløber, vinder.`}</p>
-          ${over ? '' : canBid() ? bidForm(lot) : bidAccessNotice()}
+          ${over ? '' : canBid(lot) ? bidForm(lot) : bidAccessNotice(lot)}
         </section>
         <section class="lp-history" id="bid-history" aria-label="Budhistorik" hidden></section>
         ${demo ? '<div class="lp-notice">Demo: buddene er eksempler og gemmes kun i din browser.</div>' : '<p class="lp-help">Testversion. Der udsendes ingen betaling eller faktura fra testen.</p>'}
       </div>
     </div>
   </div>
-  ${others.length ? `<section class="lp-band-cream lp-section--rule"><div class="lp-wrap lp-section"><h2 class="lp-display lp-display--s">Andre makkere</h2><div class="lp-lots lp-lots--carousel" style="margin-top: 40px">${others.map(lotCard).join('')}</div></div></section>` : ''}`;
+  ${others.length ? `<section class="lp-band-cream lp-section--rule"><div class="lp-wrap lp-section"><h2 class="lp-display lp-display--s">Andre auktioner</h2><div class="lp-lots lp-lots--carousel" style="margin-top: 40px">${others.map(lotCard).join('')}</div></div></section>` : ''}`;
 
-  if (!over && canBid()) wireBidForm(lot);
+  if (!over && canBid(lot)) wireBidForm(lot);
   renderHistory(lot);
 }
 
@@ -401,8 +410,8 @@ function confirmBid(lot, amount) {
   }
   const request = crypto.randomUUID();
   modal(`<p class="lp-eyebrow" style="color: var(--red-text)">${demo ? 'Demobud' : 'Bekræft dit bud'}</p>
-    <h2 id="modal-title">Dig og ${esc(firstName(lot))}?</h2>
-    <p class="lp-text">Du byder <strong>${money(amount)}</strong> på at blive makker med ${esc(lot.name)}.</p>
+    <h2 id="modal-title">${kindOf(lot) === 'item' ? `Byd på ${esc(lot.name)}?` : `Dig og ${esc(firstName(lot))}?`}</h2>
+    <p class="lp-text">Du byder <strong>${money(amount)}</strong> ${kindOf(lot) === 'item' ? `på ${esc(lot.name)}` : `på at blive makker med ${esc(lot.name)}`}.</p>
     <p class="lp-help">${demo ? 'Demo: buddet gemmes kun i din browser.' : 'Testauktion uden betaling. I den færdige auktion faktureres vinderbuddet efter auktionen.'}</p>
     <form id="confirm-form" class="lp-actions">
       <button class="lp-btn lp-btn--primary" type="submit">Bekræft ${money(amount)}</button>
@@ -473,7 +482,7 @@ async function adminView() {
   main.innerHTML = `<div class="lp-wrap" style="padding-block: 48px var(--space-9); display: flex; flex-direction: column; gap: 32px">
     <div class="lp-section-head">
       <h1 class="lp-display lp-display--s" style="color: var(--ink)">Administration</h1>
-      <div class="lp-actions"><a class="lp-btn lp-btn--secondary" href="${link()}">Se auktionen</a><button class="lp-btn lp-btn--primary" type="button" id="new-lot">Ny makker</button></div>
+      <div class="lp-actions"><a class="lp-btn lp-btn--secondary" href="${link()}">Se auktionen</a><button class="lp-btn lp-btn--primary" type="button" id="new-lot">Ny auktion</button></div>
     </div>
     <p class="lp-help">${demo ? 'Demo-administration. Ændringer gemmes kun i denne browser.' : 'Testmiljø. Makkere med bud kan ikke redigeres. Tider vises i dansk tid.'}</p>
     <nav class="lp-tabs" aria-label="Administration">${tabs.map(([key, label]) => `<a href="#" data-tab="${key}" ${key === adminTab ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
@@ -503,15 +512,16 @@ async function adminView() {
 
 function adminLots(body) {
   if (!lots.length) {
-    body.innerHTML = '<div class="lp-empty"><p class="lp-text">Ingen makkere endnu. Opret den første med "Ny makker".</p></div>';
+    body.innerHTML = '<div class="lp-empty"><p class="lp-text">Ingen auktioner endnu. Opret den første med "Ny auktion".</p></div>';
     return;
   }
   body.innerHTML = `<div class="lp-tablebox"><table class="lp-table">
-    <thead><tr><th scope="col">Makker</th><th scope="col">Status</th><th scope="col" class="num">Startpris</th><th scope="col" class="num">Højeste bud</th><th scope="col" class="num">Bud</th><th scope="col">Slutter</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
+    <thead><tr><th scope="col">Auktion</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col" class="num">Startpris</th><th scope="col" class="num">Højeste bud</th><th scope="col" class="num">Bud</th><th scope="col">Slutter</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
     <tbody>${lots
       .map(
         (lot) => `<tr>
       <td><div class="lp-cell-name"><img class="lp-thumb" src="${esc(safeImage(lot.image_url))}" alt=""><strong>${esc(lot.name)}</strong></div></td>
+      <td>${kindOf(lot) === 'item' ? 'Charity-produkt' : 'Padelmakker'}</td>
       <td>${statusPill(lot)}</td>
       <td class="num">${money(lot.starting_price)}</td>
       <td class="num">${lot.bid_count ? money(lot.current_bid) : '–'}</td>
@@ -628,19 +638,21 @@ function editLot(lot) {
     return;
   }
   modal(`<p class="lp-eyebrow" style="color: var(--red-text)">Administration</p>
-    <h2 id="modal-title">${lot ? 'Rediger makker' : 'Ny makker'}</h2>
+    <h2 id="modal-title">${lot ? 'Rediger auktion' : 'Ny auktion'}</h2>
     <form id="lot-form" class="lp-form">
+      <div class="lp-field"><label for="lot-kind">Type</label><select id="lot-kind" class="lp-input" name="kind"><option value="item" ${lot?.kind !== 'partner' ? 'selected' : ''}>Charity-produkt – alle med profil kan byde</option><option value="partner" ${lot?.kind === 'partner' ? 'selected' : ''}>Padelmakker – kun individuelle deltagere kan byde</option></select></div>
       <div class="lp-field"><label for="lot-name">Navn</label><input id="lot-name" class="lp-input" name="name" value="${esc(lot?.name || '')}" minlength="2" maxlength="100" required></div>
-      <div class="lp-field"><label for="lot-category">Kategori</label><input id="lot-category" class="lp-input" name="category" value="${esc(lot?.category || '')}" placeholder="Fx Padelspiller" maxlength="60" required></div>
+      <div class="lp-field"><label for="lot-category">Kategori</label><input id="lot-category" class="lp-input" name="category" value="${esc(lot?.category || '')}" placeholder="Fx Padelspiller, Oplevelse eller Design" maxlength="60" required></div>
       <div class="lp-field"><label for="lot-image">Billede (HTTPS-adresse)</label><input id="lot-image" class="lp-input" name="image" type="url" pattern="https://.*" value="${esc(lot?.image_url || '')}" required></div>
       <div class="lp-field"><label for="lot-description">Beskrivelse</label><textarea id="lot-description" class="lp-input" name="description" minlength="10" maxlength="3000" required>${esc(lot?.description || '')}</textarea></div>
       <div class="lp-field-row">
         <div class="lp-field"><label for="lot-start">Startpris i kr.</label><input id="lot-start" class="lp-input" name="start" type="number" min="500" max="${MAX_BID}" step="${STEP}" value="${lot?.starting_price || 500}" required></div>
         <div class="lp-field"><label for="lot-status">Status</label><select id="lot-status" class="lp-input" name="status"><option value="draft">Kladde</option><option value="live" ${lot?.status === 'live' ? 'selected' : ''}>Live</option></select></div>
       </div>
+      <div class="lp-field"><label for="lot-value">Værdi (valgfri)</label><input id="lot-value" class="lp-input" name="value" maxlength="60" value="${esc(lot?.value_text || '')}" placeholder="Fx Uvurderligt eller 4.000 kr."><p class="lp-help">Vises på charity-produkter.</p></div>
       <div class="lp-field"><label for="lot-ends">Slutter (dansk tid)</label><input id="lot-ends" class="lp-input" name="ends" type="datetime-local" value="${localDate(lot?.ends_at || new Date(Date.now() + 7 * 86400000))}" required></div>
-      <p class="lp-help">Bud stiger med mindst 500 kr. En live makker kan ses af alle. Tjek navn, billede og beskrivelse, før du sætter den live.</p>
-      <div><button class="lp-btn lp-btn--primary" type="submit">Gem makker</button></div>
+      <p class="lp-help">Bud stiger med mindst 500 kr. En live auktion kan ses af alle. Tjek navn, billede og beskrivelse, før du sætter den live.</p>
+      <div><button class="lp-btn lp-btn--primary" type="submit">Gem auktion</button></div>
     </form>`);
   useForm($('#lot-form'), async (form) => {
     const ends = danishInstant(field(form, 'ends'));
@@ -654,6 +666,8 @@ function editLot(lot) {
       p_ends: ends,
       p_start: Number(field(form, 'start')),
       p_status: field(form, 'status'),
+      p_kind: field(form, 'kind'),
+      p_value: field(form, 'value') || null,
     };
     if (demo) {
       const next = {
@@ -665,6 +679,8 @@ function editLot(lot) {
         ends_at: ends,
         starting_price: values.p_start,
         status: values.p_status,
+        kind: values.p_kind,
+        value_text: values.p_value,
         current_bid: 0,
         bid_count: 0,
       };
@@ -672,13 +688,19 @@ function editLot(lot) {
       else lots.push(next);
       saveDemo();
     } else {
-      const { error } = await client.rpc('save_auction_lot', values);
+      let { error } = await client.rpc('save_auction_lot', values);
+      // Before database/auction-items.sql is applied only the old 8-argument function exists.
+      if (error && /PGRST202|could not find/i.test(`${error.code} ${error.message}`)) {
+        const { p_kind, p_value, ...old } = values;
+        if (p_kind === 'item') throw new Error('Charity-produkter kræver, at database/auction-items.sql er kørt i Supabase.');
+        ({ error } = await client.rpc('save_auction_lot', old));
+      }
       if (error) throw error;
       await fetchLots();
     }
     closeModal();
     await adminView();
-    toast('Makkeren er gemt.');
+    toast('Auktionen er gemt.');
   });
 }
 
@@ -702,7 +724,7 @@ async function refresh() {
 
 window.addEventListener('hashchange', () => {
   if (registrationPage || participantPage) return;
-  if (location.hash === '#makkerne' || location.hash === '#saadan') return;
+  if (['#auktioner', '#makkerne', '#saadan'].includes(location.hash)) return;
   window.scrollTo(0, 0);
   render().catch((error) => toast(errorMessage(error)));
 });
@@ -735,7 +757,7 @@ setInterval(async () => {
 
 function startDemo() {
   demo = true;
-  setTestbar('Demo · eksempler på makkere og bud · ingen betaling');
+  setTestbar('Demo · eksempler på auktioner og bud · ingen betaling');
   lots = readDemo();
   return render();
 }
@@ -745,7 +767,7 @@ async function start() {
   const response = await fetch('/api/auction-config?context=' + (adminPage ? 'admin' : 'participant'));
   if (response.status === 404 && !adminPage && !registrationPage && !participantPage) return startDemo();
   if (!response.ok) {
-    main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty"><h1 class="lp-display lp-display--s">${registrationPage ? 'Tilmeldingen er ikke åben endnu' : 'Siden er ikke åben endnu'}</h1><p class="lp-text">Vi gør klar. Kig forbi igen senere.</p><a class="lp-btn lp-btn--primary" href="/om-dagen">Læs om dagen</a></div></div>`;
+    main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty"><h1 class="lp-display lp-display--s">${registrationPage ? 'Tilmeldingen er ikke åben endnu' : 'Siden er ikke åben endnu'}</h1><p class="lp-text">Vi gør klar. Kig forbi igen senere.</p><a class="lp-btn lp-btn--primary" href="/forsidetest">Til forsiden</a></div></div>`;
     setHeader({ showSignup: false });
     return;
   }
