@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { countdownShort, countdownBar, isOver } from './countdown.js';
 import { initialLots, demoHistory } from './demo.js';
+import { termsFor, keyTerms, stepsFor, faqFor } from './terms.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
 import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setTestbar, setHeader } from './ui.js';
@@ -333,10 +334,47 @@ function detail(id) {
       </div>
     </div>
   </div>
+  ${lotInfo(lot)}
   ${others.length ? `<section class="lp-band-cream lp-section--rule"><div class="lp-wrap lp-section"><h2 class="lp-display lp-display--s">Andre auktioner</h2><div class="lp-lots lp-lots--carousel" style="margin-top: 40px">${others.map(lotCard).join('')}</div></div></section>` : ''}`;
 
   if (!over && canBid(lot)) wireBidForm(lot);
   renderHistory(lot);
+}
+
+// Guide, terms and FAQ, as on a classic charity auction page.
+function lotInfo(lot) {
+  const kind = kindOf(lot);
+  const gets = kind === 'partner'
+    ? [`En plads som makker med ${esc(lot.name)} i Charity Turnering`, '2. april 2027 kl. 12.30–17.00 i Pakhus77, Aarhus']
+    : lot.value_text ? [`${esc(lot.name)}`, `Værdi: ${esc(lot.value_text)}`] : [];
+  return `<section class="lp-band-cream lp-section--rule" id="vilkaar">
+    <div class="lp-wrap lp-section lp-info">
+      <div class="lp-info__col">
+        ${gets.length ? `<div class="lp-info__block"><h2 class="lp-info__title">Det får du</h2><ul class="lp-terms">${gets.map((g) => `<li>${g}</li>`).join('')}</ul></div>` : ''}
+        <div class="lp-info__block">
+          <h2 class="lp-info__title">Sådan foregår det</h2>
+          <ol class="lp-howto">${stepsFor(kind).map(([title, text], i) => `<li><span class="lp-howto__num" aria-hidden="true">${i + 1}</span><div><h3 class="lp-step__title">${title}</h3><p class="lp-step__text">${text}</p></div></li>`).join('')}</ol>
+        </div>
+        <div class="lp-panel lp-info__cause">
+          <p class="lp-lot__meta">Til fordel for</p>
+          <p style="margin: 0; font: 400 36px/1 var(--font-display)">LykkeLiga</p>
+          <p class="lp-text">Et nationalt fællesskab for børn og unge med funktionsnedsættelser. Hele beløbet går ubeskåret til LykkeLigas arbejde.</p>
+          <a href="/om-lykkeliga">Om LykkeLiga</a>
+        </div>
+      </div>
+      <div class="lp-info__col">
+        <div class="lp-info__block">
+          <h2 class="lp-info__title">Vilkår</h2>
+          <ul class="lp-terms">${termsFor(kind).map((t) => `<li>${t}</li>`).join('')}</ul>
+          <p class="lp-help">Testversion af vilkårene.</p>
+        </div>
+        <div class="lp-info__block">
+          <h2 class="lp-info__title">Spørgsmål og svar</h2>
+          <div class="lp-faq">${faqFor(kind).map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+  </section>`;
 }
 
 const bidTime = (value) => {
@@ -412,13 +450,23 @@ function confirmBid(lot, amount) {
   modal(`<p class="lp-eyebrow" style="color: var(--red-text)">${demo ? 'Demobud' : 'Bekræft dit bud'}</p>
     <h2 id="modal-title">${kindOf(lot) === 'item' ? `Byd på ${esc(lot.name)}?` : `Dig og ${esc(firstName(lot))}?`}</h2>
     <p class="lp-text">Du byder <strong>${money(amount)}</strong> ${kindOf(lot) === 'item' ? `på ${esc(lot.name)}` : `på at blive makker med ${esc(lot.name)}`}.</p>
-    <p class="lp-help">${demo ? 'Demo: buddet gemmes kun i din browser.' : 'Testauktion uden betaling. I den færdige auktion faktureres vinderbuddet efter auktionen.'}</p>
-    <form id="confirm-form" class="lp-actions">
-      <button class="lp-btn lp-btn--primary" type="submit">Bekræft ${money(amount)}</button>
-      <button class="lp-btn lp-btn--secondary" type="button" id="confirm-cancel">Fortryd</button>
+    <ul class="lp-terms">${keyTerms.map((t) => `<li>${t}</li>`).join('')}</ul>
+    <form id="confirm-form" class="lp-form" style="gap: 18px">
+      <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer <a href="#vilkaar" id="confirm-terms-link">vilkårene for auktionen</a> og ved, at mit bud er bindende.</span></label>
+      ${demo ? '<p class="lp-help">Demo: buddet gemmes kun i din browser.</p>' : ''}
+      <div class="lp-actions">
+        <button class="lp-btn lp-btn--primary" type="submit">Bekræft ${money(amount)}</button>
+        <button class="lp-btn lp-btn--secondary" type="button" id="confirm-cancel">Fortryd</button>
+      </div>
     </form>`);
+  $('#confirm-terms-link').onclick = (event) => {
+    event.preventDefault();
+    closeModal();
+    $('#vilkaar')?.scrollIntoView({ behavior: 'smooth' });
+  };
   $('#confirm-cancel').onclick = closeModal;
-  useForm($('#confirm-form'), async () => {
+  useForm($('#confirm-form'), async (form) => {
+    if (!form.querySelector('[name=terms]').checked) throw new Error('Accepter vilkårene for at byde.');
     if (demo) {
       if (closed(lot) || amount < minimum(lot)) throw new Error('Auktionen er slut, eller buddet er blevet overbudt.');
       lot.history = [{ amount, created_at: new Date().toISOString(), display_name: 'Demobudgiver', is_mine: true }, ...demoHistory(lot)];
