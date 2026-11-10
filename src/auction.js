@@ -233,7 +233,7 @@ function listing() {
     </div>
   </section>
   <section class="lp-band-red">
-    <div class="lp-wrap" style="padding-block: 80px; display: flex; flex-wrap: wrap; gap: 40px; align-items: center">
+    <div class="lp-wrap" style="padding-block: var(--space-band); display: flex; flex-wrap: wrap; gap: 40px; align-items: center">
       <div style="flex: 999 1 420px; min-width: 0">
         <h2 class="lp-display lp-display--band">En plads på banen.<br>En forskel for andre.</h2>
         <p class="lp-big-note">Turnering, forplejning, T-shirt, goodiebag, præmier og VIP-adgang til etape 2.</p>
@@ -323,7 +323,7 @@ function detail(id) {
       </div>
     </div>
   </div>
-  ${others.length ? `<section class="lp-band-cream lp-section--rule"><div class="lp-wrap lp-section"><h2 class="lp-display lp-display--s">Andre makkere</h2><div class="lp-lots" style="margin-top: 40px">${others.map(lotCard).join('')}</div></div></section>` : ''}`;
+  ${others.length ? `<section class="lp-band-cream lp-section--rule"><div class="lp-wrap lp-section"><h2 class="lp-display lp-display--s">Andre makkere</h2><div class="lp-lots lp-lots--carousel" style="margin-top: 40px">${others.map(lotCard).join('')}</div></div></section>` : ''}`;
 
   if (!over && canBid()) wireBidForm(lot);
 }
