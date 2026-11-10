@@ -24,9 +24,10 @@ const pages = {
   deltager: ['src/auction.html', 'deltager'],
   admin: ['src/auction.html', ''],
   administration: ['src/auction.html', ''],
-  'om-dagen': ['src/om-dagen.html', 'om-dagen'],
-  sagen: ['src/sagen.html', 'sagen'],
-  forsidetest: ['src/forsidetest.html', ''],
+  forsidetest: ['src/forsidetest.html', 'forside'],
+  'charity-turnering': ['src/charity-turnering.html', 'turnering'],
+  'charity-showkamp': ['src/charity-showkamp.html', 'showkamp'],
+  'om-lykkeliga': ['src/om-lykkeliga.html', 'lykkeliga'],
 };
 for (const [route, [template, current]] of Object.entries(pages)) {
   await mkdir(`dist/${route}`, { recursive: true });

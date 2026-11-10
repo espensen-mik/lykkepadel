@@ -15,7 +15,10 @@ createServer(async(req,res)=>{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/api/auction-config'){configHandler(req,res);return;}
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
-  const pages=['auktion','deltager','tilmelding','admin','administration','om-dagen','sagen','forsidetest'];
+  const pages=['auktion','deltager','tilmelding','admin','administration','forsidetest','charity-turnering','charity-showkamp','om-lykkeliga'];
+  const moved={'/om-dagen':'/forsidetest#program','/sagen':'/om-lykkeliga'};
+  const target=moved[pathname.replace(/\/$/,'')];
+  if(target){res.writeHead(307,{Location:target}).end();return;}
   const routes={'/':'index.html'};
   for(const page of pages){routes['/'+page]=page+'/index.html';routes['/'+page+'/']=page+'/index.html';}
   const relative=routes[pathname]||pathname.slice(1);

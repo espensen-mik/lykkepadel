@@ -50,6 +50,20 @@ select public.auction_bid_history(id) from public.auction_lots where status = 'l
 
 `node --test tests/bid-history.test.mjs` tester navne, unikhed og at historikken ikke afslører identiteter.
 
+## Lykke Auktion: charity-produkter og padelmakkere
+
+Kør `auction-items.sql` én gang efter `bid-history.sql`. Den:
+
+- giver auktionerne en type, `kind`: `partner` (padelmakker) eller `item` (charity-produkt), samt en valgfri `value_text` (fx "Uvurderligt"). Eksisterende auktioner bliver padelmakkere.
+- tilføjer `register_auction_bidder(...)`, så alle med en bekræftet mail kan oprette en gratis budprofil med synligt navn.
+- ændrer budreglerne: alle aktive profiler kan byde på charity-produkter, mens padelmakkere stadig kræver en bekræftet individuel tilmelding.
+- gør `auction_profiles.approved` til en ren blokeringsknap. Bekræftede makkerpar får en aktiv profil, så de kan byde på produkter.
+- tilføjer `save_auction_lot` med type og værdi (10 argumenter). Den gamle udgave med 8 argumenter virker stadig og gemmer en padelmakker.
+
+Siden virker både før og efter kørslen. Før kørslen kan admin kun oprette padelmakkere, og gratis profiler kan ikke oprettes.
+
+`node --test tests/auction-items.test.mjs` tester budreglerne for begge typer.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.

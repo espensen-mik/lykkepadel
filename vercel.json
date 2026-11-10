@@ -8,6 +8,16 @@
       "source": "/administration",
       "destination": "/admin",
       "permanent": false
+    },
+    {
+      "source": "/om-dagen",
+      "destination": "/forsidetest#program",
+      "permanent": false
+    },
+    {
+      "source": "/sagen",
+      "destination": "/om-lykkeliga",
+      "permanent": false
     }
   ]
 }

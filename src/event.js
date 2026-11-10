@@ -3,12 +3,12 @@ import { $, esc, money, field, errorHtml, errorMessage, setHeader } from './ui.j
 
 // Registration (/tilmelding) and the participant page (/deltager), backed by Supabase.
 const DRAFT_KEY = 'lykke-event-draft-v2';
-const INCLUDES = 'turnering, forplejning, T-shirt og goodiebag, præmier, networking, synlighed i forbindelse med eventet samt VIP-adgang til etape 2';
+const INCLUDES = 'turnering, forplejning, T-shirt og goodiebag, præmier, networking, synlighed i forbindelse med eventet samt VIP-adgang til Charity Showkamp';
 const LABELS = { individual: 'Individuel', pair: 'Makkerpar' };
 const DESCRIPTIONS = {
   individual:
-    'Du køber én plads i turneringen, og vi matcher dig med en makker på dit niveau. Du får desuden adgang til onlineauktionen, hvor du kan byde på en professionel eller kendt profil som makker.',
-  pair: 'I tilmelder jer som fast makkerpar og spiller hele turneringen sammen. I kan repræsentere én virksomhed eller gå sammen på tværs af to, og I bliver præsenteret som officielt makkerpar. Makkerpar kan ikke byde på auktionen.',
+    'Du køber én plads i turneringen, og vi matcher dig med en makker på dit niveau. Du kan desuden byde på padelmakkerne i Lykke Auktion, hvor du kan vinde en professionel eller kendt profil som makker.',
+  pair: 'I tilmelder jer som fast makkerpar og spiller hele turneringen sammen. I kan repræsentere én virksomhed eller gå sammen på tværs af to, og I bliver præsenteret som officielt makkerpar. Makkerpar kan byde på charity-produkterne i Lykke Auktion, men ikke på padelmakkere.',
 };
 
 let client;
@@ -78,6 +78,7 @@ export async function mountEvent(connectedClient, { participant = false } = {}) 
     const { data: rows, error: loadError } = await client.from('event_registrations').select('*').eq('user_id', currentUser.id);
     if (loadError) throw loadError;
     if (rows.length) return receipt(rows[0]);
+    if (participant) return participantHome();
     draft.email = currentUser.email;
   }
   if (participant) return login();
@@ -140,12 +141,12 @@ function details() {
       </div>
       <div class="lp-field"><label for="ev-email">Mail</label><input id="ev-email" class="lp-input" name="email" type="email" autocomplete="email" maxlength="254" value="${esc(currentUser?.email || draft.email)}" ${currentUser ? 'readonly' : ''} required><p class="lp-help">Din mail bliver din adgang til Min side. Vi sender en kode hertil, før tilmeldingen gemmes.</p></div>
       <div class="lp-field"><label for="ev-address">Faktureringsadresse</label><textarea id="ev-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required>${esc(draft.address)}</textarea></div>
-      ${draft.type === 'individual' ? `<div class="lp-field"><label for="ev-display">Synligt navn ved bud</label><input id="ev-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" value="${esc(draft.display)}" required><p class="lp-help">Vises ved dine bud på makkerauktionen, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>` : ''}
+      ${true ? `<div class="lp-field"><label for="ev-display">Synligt navn ved bud</label><input id="ev-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" value="${esc(draft.display)}" required><p class="lp-help">Vises ved dine bud i Lykke Auktion, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>` : ''}
       ${draft.type === 'pair' ? `<div class="lp-field"><label for="ev-partner">Din makkers fulde navn</label><input id="ev-partner" class="lp-input" name="partner" minlength="2" maxlength="120" value="${esc(draft.partner)}" required></div>` : ''}
       <div class="lp-field"><label for="ev-code">Rabatkode</label><input id="ev-code" class="lp-input" name="code" autocomplete="off" maxlength="80" value="${esc(draft.code)}"><p class="lp-help">Rabatten beregnes, når du fortsætter.</p></div>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Fortsæt</button></div>
     </form>
-    ${summary([[`${LABELS[draft.type]} · ${p.seats} ${p.seats === 1 ? 'spiller' : 'spillere'}`, money(p.price)]], draft.type === 'individual' ? 'Giver budret i makkerauktionen. Et eventuelt vinderbud faktureres separat efter auktionen.' : 'Makkerpar kan ikke byde på auktionen.')}
+    ${summary([[`${LABELS[draft.type]} · ${p.seats} ${p.seats === 1 ? 'spiller' : 'spillere'}`, money(p.price)]], draft.type === 'individual' ? 'Giver adgang til at byde på padelmakkere i Lykke Auktion. Et eventuelt vinderbud faktureres separat efter auktionen.' : 'Makkerpar kan byde på charity-produkterne i Lykke Auktion.')}
   </div>`;
   $('#shell-back').onclick = (event) => {
     event.preventDefault();
@@ -157,7 +158,7 @@ function details() {
     const fields = Object.fromEntries(new FormData(form));
     draft = { ...validateRegistration({ ...fields, type: draft.type }), address: field(form, 'address'), code: field(form, 'code'), display: field(form, 'display').replace(/\s+/g, ' ') };
     if (draft.address.length < 5) throw new Error('Udfyld din faktureringsadresse.');
-    if (draft.type === 'individual' && (draft.display.length < 2 || draft.display.length > 40)) throw new Error('Det synlige navn skal være mellem 2 og 40 tegn.');
+    if ((draft.display.length < 2 || draft.display.length > 40)) throw new Error('Det synlige navn skal være mellem 2 og 40 tegn.');
     saveDraft();
     const { data, error } = await client.rpc('event_registration_quote', { p_kind: draft.type, p_code: draft.code });
     if (error) throw error;
@@ -172,7 +173,7 @@ function review() {
   const rows = [
     ['Navn', esc(draft.name)],
     ...(draft.type === 'pair' ? [['Makker', esc(draft.partner)]] : []),
-    ...(draft.type === 'individual' ? [['Synligt navn ved bud', esc(draft.display)]] : []),
+    ['Synligt navn ved bud', esc(draft.display)],
     ['Mail', esc(draft.email)],
     ['Telefon', esc(draft.phone)],
     ['Faktureringsadresse', esc(draft.address)],
@@ -215,7 +216,7 @@ async function complete() {
   });
   if (error) throw error;
   let nameProblem = '';
-  if (draft.type === 'individual' && draft.display) {
+  if (draft.display) {
     const { error: nameError } = await client.rpc('set_auction_display_name', { p_name: draft.display });
     if (nameError) nameProblem = nameError.message;
   }
@@ -232,7 +233,7 @@ async function loadDisplayName() {
 
 // Min side: show and change the name shown next to the participant's bids.
 async function displayNameSection(r, nameProblem) {
-  if (r.kind !== 'individual' || r.status === 'cancelled') return;
+  if (r.status === 'cancelled') return;
   const slot = $('#display-name-slot');
   const { available, name } = await loadDisplayName();
   if (!available || !slot) return;
@@ -255,37 +256,117 @@ async function displayNameSection(r, nameProblem) {
   render(name, nameProblem ? `Vi kunne ikke gemme dit synlige navn: ${nameProblem}` : '');
 }
 
-// Participant login with a one-time code.
+// Min side: log in or create a free profile with a one-time code.
 function login() {
   const content = shell(0, 'Min side');
   content.innerHTML = `<form id="participant-login" class="lp-form" style="max-width: 560px">
-    <p class="lp-lead">Log ind med den mail, du tilmeldte dig med. Du får en kode på mail og skal ikke bruge en adgangskode.</p>
+    <p class="lp-lead">Log ind eller opret en gratis profil med din mail. Du får en kode på mail og skal ikke bruge en adgangskode.</p>
     <div class="lp-field"><label for="login-email">Mail</label><input id="login-email" class="lp-input" name="email" type="email" autocomplete="email" required maxlength="254"></div>
     <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Send kode</button></div>
-    <p class="lp-help">Ikke tilmeldt endnu? <a href="/tilmelding">Tilmeld dig</a></p>
+    <p class="lp-help">Med en profil kan du byde på charity-produkterne i Lykke Auktion. Vil du spille med i Charity Turnering? <a href="/tilmelding">Tilmeld dig her</a></p>
   </form>`;
-  formAction('#participant-login', async (form) =>
-    sendCode(field(form, 'email'), false, async () => {
-      const { data, error } = await client.from('event_registrations').select('*').eq('user_id', currentUser.id);
-      if (error) throw error;
-      if (!data.length) {
-        shell(0, 'Ingen tilmelding endnu').innerHTML = '<div class="lp-empty"><p class="lp-text">Din mail er bekræftet, men der er ingen tilmelding på kontoen.</p><a class="lp-btn lp-btn--primary" href="/tilmelding">Tilmeld dig</a></div>';
-        return;
-      }
-      receipt(data[0]);
-    }),
-  );
+  formAction('#participant-login', async (form) => sendCode(field(form, 'email'), true, participantHome, false));
 }
 
-async function sendCode(email, create, onVerified) {
+// After login: the registration, else the auction profile, else the form to create one.
+async function participantHome() {
+  const { data, error } = await client.from('event_registrations').select('*').eq('user_id', currentUser.id);
+  if (error) throw error;
+  if (data.length) return receipt(data[0]);
+  const { data: profiles, error: profileError } = await client.from('auction_profiles').select('*').eq('user_id', currentUser.id);
+  if (profileError) throw profileError;
+  if (profiles.length) return profileHome(profiles[0]);
+  profileForm();
+}
+
+function profileForm() {
+  const content = shell(0, 'Opret din profil');
+  content.innerHTML = `<div class="lp-split">
+    <form id="auction-profile" class="lp-form" style="flex: 999 1 520px">
+      <p class="lp-lead">Med en gratis profil kan du byde på charity-produkterne i Lykke Auktion. Vinder du, sender LykkeLiga en faktura.</p>
+      <div class="lp-field-row">
+        <div class="lp-field"><label for="pf-name">Fulde navn</label><input id="pf-name" class="lp-input" name="name" autocomplete="name" minlength="2" maxlength="120" required></div>
+        <div class="lp-field"><label for="pf-phone">Telefon</label><input id="pf-phone" class="lp-input" name="phone" type="tel" autocomplete="tel" minlength="6" maxlength="30" required></div>
+      </div>
+      <div class="lp-field"><label for="pf-address">Faktureringsadresse</label><textarea id="pf-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required></textarea></div>
+      <div class="lp-field"><label for="pf-display">Synligt navn ved bud</label><input id="pf-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" required><p class="lp-help">Vises ved dine bud, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>
+      <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer, at mine oplysninger gemmes hos LykkeLiga, og at et vindende bud er bindende og faktureres efter auktionen. Dette er en testversion.</span></label>
+      <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Opret profil</button></div>
+    </form>
+    <aside class="lp-panel" style="flex: 1 1 320px">
+      <p style="margin: 0; font: 400 32px/1 var(--font-display)">Padelmakkere?</p>
+      <p class="lp-text">Bud på padelmakkere kræver individuel tilmelding til Charity Turnering.</p>
+      <a class="lp-btn lp-btn--secondary lp-btn--small" href="/tilmelding" style="align-self: flex-start; border-width: 3px">Tilmeld dig turneringen</a>
+    </aside>
+  </div>`;
+  formAction('#auction-profile', async (form) => {
+    const { error } = await client.rpc('register_auction_bidder', {
+      p_name: field(form, 'name'),
+      p_phone: field(form, 'phone'),
+      p_address: field(form, 'address'),
+      p_display_name: field(form, 'display'),
+    });
+    if (error && /PGRST202|could not find/i.test(`${error.code} ${error.message}`)) throw new Error('Profiler til auktionen er ikke åbnet endnu. Prøv igen senere.');
+    if (error) throw error;
+    await participantHome();
+  });
+}
+
+// Min side for bidders without a tournament registration.
+function profileHome(p) {
+  document.title = 'Min side – Lykke Padel';
+  setHeader({ loginText: 'Min side', loginHref: '/deltager', showSignup: true });
+  main.innerHTML = `
+  <section class="lp-band-brown">
+    <div class="lp-wrap lp-hero">
+      <div class="lp-heading">
+        <p class="lp-eyebrow">Min side</p>
+        <h1 class="lp-display lp-display--band">Hej ${esc(p.full_name.split(' ')[0])}</h1>
+        <p class="lp-lead">${p.approved ? 'Din profil er klar. Du kan byde på charity-produkterne i Lykke Auktion.' : 'Din budadgang er sat på pause. Kontakt LykkeLiga, hvis det er en fejl.'}</p>
+      </div>
+      <dl class="lp-stats">
+        <div><dt>Profil</dt><dd>${p.approved ? 'Aktiv' : 'På pause'}</dd></div>
+        <div><dt>Charity Turnering</dt><dd>Ikke tilmeldt</dd></div>
+      </dl>
+    </div>
+  </section>
+  <div class="lp-wrap lp-section lp-split" style="gap: 56px">
+    <section style="flex: 999 1 520px; display: flex; flex-direction: column; gap: 24px">
+      <h2 class="lp-display lp-display--s">Byd for lykke</h2>
+      <p class="lp-text">Find charity-produkterne i Lykke Auktion. Vil du også byde på padelmakkere, skal du tilmelde dig Charity Turnering individuelt.</p>
+      <div class="lp-actions">
+        <a class="lp-btn lp-btn--primary lp-btn--large" href="/auktion?type=produkter">Se auktionen</a>
+        <a class="lp-btn lp-btn--secondary lp-btn--large" href="/charity-turnering">Om Charity Turnering</a>
+      </div>
+      <div><button class="lp-btn--text" type="button" id="event-logout">Log ud</button></div>
+    </section>
+    ${summary(
+      [
+        ['Navn', esc(p.full_name)],
+        ['Telefon', esc(p.phone)],
+        ['Faktureringsadresse', esc(p.billing_address)],
+      ],
+      'Skal noget rettes? Skriv til <a href="mailto:info@lykkeliga.dk">info@lykkeliga.dk</a>.',
+    )}
+    <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
+  </div>`;
+  $('#event-logout').onclick = async () => {
+    await client.auth.signOut();
+    location.href = '/deltager';
+  };
+  displayNameSection({ status: p.approved ? 'confirmed' : 'cancelled' }, '');
+  window.scrollTo(0, 0);
+}
+
+async function sendCode(email, create, onVerified, registering = create) {
   const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: create } });
   if (error) throw new Error(error.status === 429 ? 'Vent lidt, før du beder om en ny kode.' : 'Mailen med koden kunne ikke sendes. Prøv igen eller kontakt LykkeLiga.');
-  const content = shell(create ? 3 : 0, 'Tjek din mail', create ? { back: { href: '#', label: 'Gå tilbage og ret' } } : {});
+  const content = shell(registering ? 3 : 0, 'Tjek din mail', registering ? { back: { href: '#', label: 'Gå tilbage og ret' } } : {});
   content.innerHTML = `<form id="verify-email" class="lp-form" style="max-width: 640px; gap: 28px">
-    <p class="lp-lead">Vi har sendt en kode til <strong>${esc(email)}</strong>. Indtast den her${create ? ' for at gennemføre tilmeldingen' : ''}. Tjek også spam.</p>
+    <p class="lp-lead">Vi har sendt en kode til <strong>${esc(email)}</strong>. Indtast den her${registering ? ' for at gennemføre tilmeldingen' : ''}. Tjek også spam.</p>
     <div class="lp-field"><label for="otp">Kode fra mailen</label><input id="otp" class="lp-input lp-input--big" name="token" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" minlength="6" maxlength="10" required autofocus style="max-width: 320px; letter-spacing: 6px"></div>
     <div class="lp-actions" style="align-items: center">
-      <button class="lp-btn lp-btn--primary lp-btn--large" type="submit">${create ? 'Bekræft og tilmeld' : 'Log ind'}</button>
+      <button class="lp-btn lp-btn--primary lp-btn--large" type="submit">${registering ? 'Bekræft og tilmeld' : 'Log ind'}</button>
       <button class="lp-btn--text" type="button" id="resend-code" disabled>Send ny kode om 60 sek.</button>
     </div>
   </form>`;
@@ -308,7 +389,7 @@ async function sendCode(email, create, onVerified) {
     const button = $('#resend-code');
     button.disabled = true;
     try {
-      await sendCode(email, create, onVerified);
+      await sendCode(email, create, onVerified, registering);
     } catch (resendError) {
       $('#verify-email').insertAdjacentHTML('beforeend', errorHtml(errorMessage(resendError)));
       button.disabled = false;
@@ -347,10 +428,10 @@ function receipt(r, { nameProblem = '' } = {}) {
   <div class="lp-wrap lp-section lp-split" style="gap: 56px">
     <section style="flex: 999 1 520px; display: flex; flex-direction: column; gap: 24px">
       <h2 class="lp-display lp-display--s">${cancelled ? 'Hvad nu?' : r.kind === 'individual' ? 'Find din makker' : 'I er klar'}</h2>
-      <p class="lp-text">${cancelled ? 'Tilmeldingen giver ikke længere adgang til at byde.' : r.kind === 'individual' ? 'Din tilmelding giver adgang til makkerauktionen. Bud skal bekræftes og hæves med mindst 500 kr. Vinder du ikke, matcher vi dig med en makker på dit niveau.' : 'I spiller sammen som fast makkerpar hele turneringen. Makkerauktionen er for individuelle deltagere.'}</p>
+      <p class="lp-text">${cancelled ? 'Tilmeldingen giver ikke længere adgang til at byde.' : r.kind === 'individual' ? 'Du er tilmeldt Charity Turnering og kan byde på både padelmakkere og charity-produkter i Lykke Auktion. Vinder du ikke en makker, matcher vi dig med en makker på dit niveau.' : 'I spiller sammen som fast makkerpar hele turneringen. I kan byde på charity-produkterne i Lykke Auktion, men ikke på padelmakkere.'}</p>
       <div class="lp-actions">
-        <a class="lp-btn lp-btn--primary lp-btn--large" href="/auktion">${r.kind === 'individual' && !cancelled ? 'Gå til makkerauktionen' : 'Se makkerauktionen'}</a>
-        <a class="lp-btn lp-btn--secondary lp-btn--large" href="/om-dagen">Om dagen og program</a>
+        <a class="lp-btn lp-btn--primary lp-btn--large" href="/auktion">${cancelled ? 'Se auktionen' : 'Gå til Lykke Auktion'}</a>
+        <a class="lp-btn lp-btn--secondary lp-btn--large" href="/forsidetest#program">Program for dagen</a>
       </div>
       <p class="lp-help">Du kan altid komme tilbage via lykkepadel.dk/deltager. På en ny enhed får du en ny kode på mail. Vi sender endnu ikke en kvitteringsmail.</p>
       <div><button class="lp-btn--text" type="button" id="event-logout">Log ud</button></div>

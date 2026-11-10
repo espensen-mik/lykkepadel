@@ -98,7 +98,7 @@
 
 /* PhotoFigure */
 .lp-photo { margin: 0; }
-.lp-photo img { display: block; width: 100%; max-width: 100%; aspect-ratio: 1015 / 425; object-fit: cover; filter: grayscale(1) sepia(0.45) contrast(1.05); }
+.lp-photo img { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 1015 / 425; object-fit: cover; filter: grayscale(1) sepia(0.45) contrast(1.05); }
 .lp-photo figcaption { margin-top: 12px; font: 400 14px var(--font-body); color: var(--sand-muted); }
 .lp-band-cream .lp-photo figcaption { color: var(--ink-muted); }
 
@@ -344,6 +344,9 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
 }
 
 
+/* Værdi på charity-produkter */
+.lp-lot__value { margin: -4px 0 0; font: 600 14px var(--font-body); color: var(--ink-muted); }
+
 /* Budhistorik på spillersiden */
 .lp-history { display: flex; flex-direction: column; gap: 14px; }
 .lp-history__title { margin: 0; font: 400 32px/1 var(--font-display); color: var(--ink); }
@@ -360,6 +363,18 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
 .lp-history__row-name .lp-history__you { color: var(--ink-muted); }
 .lp-history__row-meta { margin: 2px 0 0; font: 400 13px var(--font-body); color: var(--ink-muted); }
 .lp-history__row-amount { margin: 0; font: 600 16px var(--font-body); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+
+/* Program i to dele */
+.lp-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: var(--space-6); }
+.lp-part { display: flex; flex-direction: column; gap: 12px; padding-top: 20px; border-top: 4px solid var(--brown); }
+.lp-part--open { border-top-color: var(--red); }
+.lp-part > p { margin: 0; }
+.lp-part__title { margin: 0; font: 400 48px/0.95 var(--font-display); color: var(--ink); }
+.lp-part__time { margin: 0; font: 700 16px var(--font-body); color: var(--ink-muted); }
+.lp-part .lp-timeline { margin: 4px 0 8px; }
+.lp-part .lp-timeline div { grid-template-columns: 78px minmax(0, 1fr); padding: 16px 0; }
+.lp-part .lp-timeline dt { font-size: 30px; }
 
 /* Dialog og toast */
 .lp-dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 0; border: 0; background: var(--cream); color: var(--ink); box-shadow: none; }
@@ -465,6 +480,8 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-bid-stats dd { font-size: 36px; }
   .lp-stepper__btn { width: 48px; height: 48px; }
   .lp-input--big { min-height: 56px; font-size: 34px; }
+
+  .lp-part__title { font-size: 36px; }
 
   /* Budhistorik */
   .lp-history__lead { padding: 16px 18px; }
