@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { countdownShort, countdownBar, isOver } from './countdown.js';
-import { initialLots } from './demo.js';
+import { initialLots, demoHistory } from './demo.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
 import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setTestbar, setHeader } from './ui.js';
@@ -319,6 +319,7 @@ function detail(id) {
           <p class="lp-help">${over ? `Auktionen sluttede ${date(lot.ends_at)}. Der kan ikke afgives flere bud.` : `Slutter ${date(lot.ends_at)} (dansk tid). Højeste bud, når tiden udløber, vinder.`}</p>
           ${over ? '' : canBid() ? bidForm(lot) : bidAccessNotice()}
         </section>
+        <section class="lp-history" id="bid-history" aria-label="Budhistorik" hidden></section>
         ${demo ? '<div class="lp-notice">Demo: buddene er eksempler og gemmes kun i din browser.</div>' : '<p class="lp-help">Testversion. Der udsendes ingen betaling eller faktura fra testen.</p>'}
       </div>
     </div>
@@ -326,6 +327,40 @@ function detail(id) {
   ${others.length ? `<section class="lp-band-cream lp-section--rule"><div class="lp-wrap lp-section"><h2 class="lp-display lp-display--s">Andre makkere</h2><div class="lp-lots lp-lots--carousel" style="margin-top: 40px">${others.map(lotCard).join('')}</div></div></section>` : ''}`;
 
   if (!over && canBid()) wireBidForm(lot);
+  renderHistory(lot);
+}
+
+const bidTime = (value) => {
+  const d = new Date(value);
+  const day = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'short', timeZone: 'Europe/Copenhagen' }).format(d);
+  const time = new Intl.DateTimeFormat('da-DK', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Copenhagen' }).format(d);
+  return `${day} kl. ${time}`;
+};
+
+async function loadHistory(lot) {
+  if (demo) return demoHistory(lot);
+  const { data, error } = await client.rpc('auction_bid_history', { p_lot: lot.id });
+  // Before database/bid-history.sql is applied the function does not exist; then the section stays hidden.
+  return error ? null : data;
+}
+
+// Public bid history: the leading (or winning) bid first, earlier bids below.
+async function renderHistory(lot) {
+  const slot = $('#bid-history');
+  if (!slot) return;
+  const rows = await loadHistory(lot);
+  if (!rows || $('#bid-history') !== slot) return;
+  const name = (row) => `${esc(row.display_name)}${row.is_mine ? ' <span class="lp-history__you">(dig)</span>' : ''}`;
+  const [lead, ...earlier] = rows;
+  slot.hidden = false;
+  slot.innerHTML = `<h2 class="lp-history__title">Budhistorik</h2>
+    ${lead
+      ? `<div class="lp-history__lead">
+          <div><p class="lp-history__label">${closed(lot) ? 'Vindende bud' : 'Højeste bud'}</p><p class="lp-history__name">${name(lead)}</p><p class="lp-history__meta">Budt ${bidTime(lead.created_at)}</p></div>
+          <p class="lp-history__amount">${money(lead.amount)}</p>
+        </div>
+        ${earlier.length ? `<p class="lp-history__label lp-history__label--list">Tidligere bud</p><ol class="lp-history__list">${earlier.map((row) => `<li><div><p class="lp-history__row-name">${name(row)}</p><p class="lp-history__row-meta">Overbudt · budt ${bidTime(row.created_at)}</p></div><p class="lp-history__row-amount">${money(row.amount)}</p></li>`).join('')}</ol>` : ''}`
+      : `<p class="lp-help">Ingen bud endnu. ${closed(lot) ? '' : 'Bliv den første til at byde.'}</p>`}`;
 }
 
 function wireBidForm(lot) {
@@ -377,6 +412,7 @@ function confirmBid(lot, amount) {
   useForm($('#confirm-form'), async () => {
     if (demo) {
       if (closed(lot) || amount < minimum(lot)) throw new Error('Auktionen er slut, eller buddet er blevet overbudt.');
+      lot.history = [{ amount, created_at: new Date().toISOString(), display_name: 'Demobudgiver', is_mine: true }, ...demoHistory(lot)];
       lot.current_bid = amount;
       lot.bid_count++;
       saveDemo();
@@ -503,10 +539,10 @@ async function adminPeople(body) {
     return;
   }
   body.innerHTML = `<div class="lp-tablebox"><table class="lp-table">
-    <thead><tr><th scope="col">Navn</th><th scope="col">Telefon</th><th scope="col">Adresse</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
+    <thead><tr><th scope="col">Navn</th><th scope="col">Synligt navn</th><th scope="col">Telefon</th><th scope="col">Adresse</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
     <tbody>${people
       .map(
-        (p) => `<tr><td><strong>${esc(p.full_name)}</strong></td><td>${esc(p.phone)}</td><td>${esc(p.billing_address)}</td>
+        (p) => `<tr><td><strong>${esc(p.full_name)}</strong></td><td>${p.display_name ? esc(p.display_name) : '<span class="lp-help">Ikke valgt</span>'}</td><td>${esc(p.phone)}</td><td>${esc(p.billing_address)}</td>
       <td>${p.approved ? '<span class="lp-pill lp-pill--lead">Godkendt</span>' : '<span class="lp-pill lp-pill--quiet">Blokeret</span>'}</td>
       <td><button class="lp-btn--text" type="button" data-approve="${esc(p.user_id)}" data-approved="${p.approved}">${p.approved ? 'Blokér' : 'Godkend'}</button></td></tr>`,
       )
