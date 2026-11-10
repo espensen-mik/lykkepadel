@@ -205,14 +205,14 @@ function listing() {
       <p class="lp-text" style="margin-top: 20px; max-width: 680px">Alle med en gratis profil kan byde på charity-produkterne. Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Du byder i hele 500 kr., og højeste bud, når tiden udløber, vinder.</p>
       ${visible.length
         ? `<div class="lp-lots" style="margin-top: 48px">${shown.map(lotCard).join('')}${visible.length < 6 && filter === 'Alle' ? soonCard : ''}</div>`
-        : `<div class="lp-empty" style="margin-top: 48px"><p class="lp-text">Auktionerne bliver offentliggjort her, når LykkeLiga åbner dem.</p><a class="lp-btn lp-btn--primary" href="/deltager">Opret gratis profil</a></div>`}
+        : `<div class="lp-empty" style="margin-top: 48px"><p class="lp-text">Auktionerne bliver offentliggjort her, når LykkeLiga åbner dem.</p><a class="lp-btn lp-btn--primary" href="${profileLink()}">Opret gratis profil</a></div>`}
     </div>
   </section>
   <section class="lp-band-cream lp-section--rule" id="saadan">
     <div class="lp-wrap lp-section">
       <h2 class="lp-display" style="font-size: clamp(52px, 6vw, 88px); margin-bottom: 40px">Sådan byder du</h2>
       <ol class="lp-steps">
-        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">1</p><div><h3 class="lp-step__title">Opret en gratis profil</h3><p class="lp-step__text">Log ind med din mail, og vælg det navn, dine bud skal vises med. <a href="/deltager">Opret profil</a></p></div></li>
+        <li class="lp-step"><p class="lp-step__num" aria-hidden="true">1</p><div><h3 class="lp-step__title">Opret en gratis profil</h3><p class="lp-step__text">Log ind med din mail, og vælg det navn, dine bud skal vises med. <a href="${profileLink()}">Opret profil</a></p></div></li>
         <li class="lp-step"><p class="lp-step__num" aria-hidden="true">2</p><div><h3 class="lp-step__title">Byd på charity-produkter</h3><p class="lp-step__text">Følg med i budhistorikken, og byd, så længe nedtællingen kører.</p></div></li>
         <li class="lp-step"><p class="lp-step__num" aria-hidden="true">3</p><div><h3 class="lp-step__title">Vil du have en padelmakker?</h3><p class="lp-step__text">Tilmeld dig Charity Turnering individuelt, så kan du også byde på padelmakkerne. <a href="/charity-turnering">Om turneringen</a></p></div></li>
       </ol>
@@ -255,14 +255,17 @@ function listing() {
 
 // ---------- Player page ----------
 
+// Min side, sending the user back to this lot afterwards.
+const profileLink = () => `/deltager?next=${encodeURIComponent(location.pathname + location.search + location.hash)}`;
+
 function bidAccessNotice(lot) {
   const partner = kindOf(lot) === 'partner';
   if (!user && partner)
-    return `<div class="lp-notice" style="flex-direction: column"><span>Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Er du tilmeldt, så log ind med din mail.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="/deltager">Log ind</a><a class="lp-btn lp-btn--secondary lp-btn--small" href="/tilmelding">Tilmeld dig</a></span></div>`;
+    return `<div class="lp-notice" style="flex-direction: column"><span>Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Er du tilmeldt, så log ind med din mail.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="${profileLink()}">Log ind</a><a class="lp-btn lp-btn--secondary lp-btn--small" href="/tilmelding">Tilmeld dig</a></span></div>`;
   if (!user)
-    return `<div class="lp-notice" style="flex-direction: column"><span>Log ind med din mail, eller opret en gratis profil, for at byde. Det tager et minut.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="/deltager">Log ind eller opret profil</a></span></div>`;
+    return `<div class="lp-notice" style="flex-direction: column"><span>Log ind med din mail, eller opret en gratis profil, for at byde. Det tager et minut.</span><span class="lp-actions"><a class="lp-btn lp-btn--primary lp-btn--small" href="${profileLink()}">Log ind eller opret profil</a></span></div>`;
   if (!profile)
-    return `<div class="lp-notice">Opret din gratis budprofil for at byde. <a href="/deltager">Opret profil</a></div>`;
+    return `<div class="lp-notice">Opret din gratis budprofil for at byde. <a href="${profileLink()}">Opret profil</a></div>`;
   if (profile.approved !== true) return `<div class="lp-notice">Din budadgang er sat på pause. Kontakt LykkeLiga på signe@lykkeliga.dk.</div>`;
   return `<div class="lp-notice">Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Makkerpar kan byde på charity-produkterne. <a href="/tilmelding">Se tilmelding</a></div>`;
 }
