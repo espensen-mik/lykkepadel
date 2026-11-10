@@ -365,16 +365,21 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
 .lp-history__row-amount { margin: 0; font: 600 16px var(--font-body); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 
-/* Program i to dele */
-.lp-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: var(--space-6); }
-.lp-part { display: flex; flex-direction: column; gap: 12px; padding-top: 20px; border-top: 4px solid var(--brown); }
-.lp-part--open { border-top-color: var(--red); }
-.lp-part > p { margin: 0; }
-.lp-part__title { margin: 0; font: 400 48px/0.95 var(--font-display); color: var(--ink); }
-.lp-part__time { margin: 0; font: 700 16px var(--font-body); color: var(--ink-muted); }
-.lp-part .lp-timeline { margin: 4px 0 8px; }
-.lp-part .lp-timeline div { grid-template-columns: 78px minmax(0, 1fr); padding: 16px 0; }
-.lp-part .lp-timeline dt { font-size: 30px; }
+/* Program som ét skema: fælles tidsakse og to spor, hvor en farvet bjælke viser, hvornår hver del kører */
+.lp-schedule { display: flex; flex-direction: column; }
+.lp-schedule__row { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; border-bottom: 1px solid var(--sand); }
+.lp-schedule__head { border-bottom: 2px solid var(--ink); padding-bottom: 16px; align-items: end; }
+.lp-schedule__lane-head { display: flex; flex-direction: column; gap: 4px; padding-left: 20px; border-left: 6px solid var(--brown); color: var(--ink); text-decoration: none; }
+.lp-schedule__lane-head--showkamp { border-left-color: var(--red); }
+.lp-schedule__lane-title { font: 400 40px/0.95 var(--font-display); }
+.lp-schedule__lane-meta { font: 600 14px var(--font-body); color: var(--ink-muted); }
+.lp-schedule__lane-head:hover .lp-schedule__lane-title { color: var(--red-text); }
+.lp-schedule__time { padding: 18px 0; font: 400 32px/1 var(--font-display); color: var(--red-text); font-variant-numeric: tabular-nums; }
+.lp-schedule__cell { padding: 18px 0 18px 20px; border-left: 6px solid transparent; min-height: 64px; }
+.lp-schedule__cell.is-turnering { border-left-color: var(--brown); }
+.lp-schedule__cell.is-showkamp { border-left-color: var(--red); }
+.lp-schedule__title { margin: 0; font: 700 18px/1.3 var(--font-body); color: var(--ink); }
+.lp-schedule__text { margin: 4px 0 0; font: 400 15px/1.5 var(--font-body); color: var(--ink-muted); }
 
 /* Dialog og toast */
 .lp-dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 0; border: 0; background: var(--cream); color: var(--ink); box-shadow: none; }
@@ -481,7 +486,15 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-stepper__btn { width: 48px; height: 48px; }
   .lp-input--big { min-height: 56px; font-size: 34px; }
 
-  .lp-part__title { font-size: 36px; }
+  .lp-schedule__head { display: none; }
+  .lp-schedule__row { grid-template-columns: 64px minmax(0, 1fr); column-gap: 14px; }
+  .lp-schedule__time { font-size: 26px; padding: 16px 0; }
+  .lp-schedule__cell { grid-column: 2; padding: 14px 0 14px 14px; border-left-width: 4px; min-height: 0; }
+  .lp-schedule__cell:empty, .lp-schedule__cell.is-empty { display: none; }
+  .lp-schedule__cell.is-turnering::before, .lp-schedule__cell.is-showkamp::before { display: block; margin-bottom: 4px; font: 400 15px var(--font-display); letter-spacing: 1.2px; }
+  .lp-schedule__cell.is-turnering::before { content: "Charity Turnering · lukket"; color: var(--ink-muted); }
+  .lp-schedule__cell.is-showkamp::before { content: "Charity Showkamp · åbent"; color: var(--red-text); }
+  .lp-schedule__title { font-size: 16px; }
 
   /* Budhistorik */
   .lp-history__lead { padding: 16px 18px; }
