@@ -1,5 +1,5 @@
 import { packages, validateRegistration } from './registration.js';
-import { $, esc, money, field, errorHtml, errorMessage, setHeader } from './ui.js';
+import { $, esc, money, field, errorHtml, errorMessage, setHeader, modal, closeModal, useForm, toast } from './ui.js';
 import { mountMyBids } from './my-bids.js';
 
 // Registration (/tilmelding) and the participant page (/deltager), backed by Supabase.
@@ -40,8 +40,15 @@ function formAction(selector, action) {
   };
 }
 
-function progress(step) {
-  const names = ['Deltagelse', 'Oplysninger', 'Bekræft'];
+const PROFILE_STEPS = ['Mail', 'Kode', 'Dine oplysninger'];
+
+// Where to go after login or a new profile, e.g. back to the lot the user wanted to bid on.
+const NEXT = (() => {
+  const next = new URLSearchParams(location.search).get('next') || '';
+  return next.startsWith('/auktion') && !next.startsWith('//') ? next : '';
+})();
+
+function progress(step, names = ['Deltagelse', 'Oplysninger', 'Bekræft']) {
   return `<ol class="lp-progress" aria-label="Trin">${names
     .map((name, i) => {
       const n = i + 1;
@@ -51,10 +58,10 @@ function progress(step) {
     .join('')}</ol>`;
 }
 
-function shell(step, title, { back } = {}) {
+function shell(step, title, { back, names } = {}) {
   main.innerHTML = `<div class="lp-wrap" style="padding-block: 48px var(--space-9); display: flex; flex-direction: column; gap: 36px">
     ${back ? `<a class="lp-back" href="${back.href}" id="shell-back">← ${back.label}</a>` : ''}
-    ${step ? progress(step) : ''}
+    ${step ? progress(step, names) : ''}
     <h1 class="lp-display lp-display--m">${title}</h1>
     <div id="event-content"></div>
   </div>`;
@@ -77,7 +84,7 @@ export async function mountEvent(connectedClient, { participant = false } = {}) 
   if (currentUser) {
     const { data: rows, error: loadError } = await client.from('event_registrations').select('*').eq('user_id', currentUser.id);
     if (loadError) throw loadError;
-    if (rows.length) return receipt(rows[0]);
+    if (rows.length) return NEXT && participant ? location.assign(NEXT) : receipt(rows[0]);
     if (participant) return participantHome();
     draft.email = currentUser.email;
   }
@@ -320,6 +327,34 @@ async function displayNameSection(r, nameProblem) {
   render(name, nameProblem ? `Vi kunne ikke gemme dit synlige navn: ${nameProblem}` : '');
 }
 
+// Min side: the participant corrects name, phone and billing address. The mail is the login.
+function contactNote(editable) {
+  return `${editable ? '<button class="lp-btn lp-btn--secondary lp-btn--small" type="button" id="edit-contact" style="border-width: 3px; margin-bottom: 12px">Ret oplysninger</button><br>' : ''}Mailen er dit login og kan ikke ændres her. Skal den ændres, så skriv til <a href="mailto:signe@lykkeliga.dk">signe@lykkeliga.dk</a>.`;
+}
+
+function setupContactEdit(current) {
+  const button = $('#edit-contact');
+  if (!button) return;
+  button.onclick = () => {
+    modal(`<h2 id="modal-title" class="lp-display lp-display--s">Ret dine oplysninger</h2>
+      <form id="contact-form" class="lp-form" style="gap: 20px">
+        <div class="lp-field"><label for="ct-name">Fulde navn</label><input id="ct-name" class="lp-input" name="name" autocomplete="name" minlength="2" maxlength="120" value="${esc(current.full_name)}" required></div>
+        <div class="lp-field"><label for="ct-phone">Telefon</label><input id="ct-phone" class="lp-input" name="phone" type="tel" autocomplete="tel" minlength="6" maxlength="30" value="${esc(current.phone)}" required></div>
+        <div class="lp-field"><label for="ct-address">Faktureringsadresse</label><textarea id="ct-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required>${esc(current.billing_address)}</textarea><p class="lp-help">Vinder du en auktion, sender vi fakturaen hertil. Skriv gerne firmanavn og CVR, hvis fakturaen skal til en virksomhed.</p></div>
+        <div class="lp-actions"><button class="lp-btn lp-btn--primary" type="submit">Gem</button><button class="lp-btn lp-btn--secondary" type="button" id="contact-cancel">Annuller</button></div>
+      </form>`);
+    $('#contact-cancel').onclick = closeModal;
+    useForm($('#contact-form'), async (form) => {
+      const { error } = await client.rpc('update_my_contact', { p_name: field(form, 'name'), p_phone: field(form, 'phone'), p_address: field(form, 'address') });
+      if (error && /PGRST202|could not find/i.test(`${error.code} ${error.message}`)) throw new Error('Det er ikke muligt at rette oplysninger endnu. Skriv til signe@lykkeliga.dk.');
+      if (error) throw error;
+      closeModal();
+      await participantHome({ redirect: false });
+      toast('Dine oplysninger er gemt.');
+    });
+  };
+}
+
 // Min side: T-shirt, company and consent. Only once database/registration-details.sql is applied.
 function playerDetailsSection(r, problem) {
   const slot = $('#player-details-slot');
@@ -352,9 +387,10 @@ function loadMyBids() {
 
 // Min side: log in or create a free profile with a one-time code.
 function login() {
-  const content = shell(0, 'Min side');
+  const content = shell(1, 'Log ind eller opret profil', { names: PROFILE_STEPS });
   content.innerHTML = `<form id="participant-login" class="lp-form" style="max-width: 560px">
-    <p class="lp-lead">Log ind eller opret en gratis profil med din mail. Du får en kode på mail og skal ikke bruge en adgangskode.</p>
+    <p class="lp-lead">Skriv din mail, så sender vi dig en kode. Du skal ikke bruge en adgangskode.</p>
+    <p class="lp-text">Er du ny, beder vi bagefter om navn, telefon og faktureringsadresse, så vi kan kontakte dig og sende en faktura, hvis du vinder. Har du allerede en profil, ${NEXT ? 'kommer du direkte tilbage til auktionen' : 'kommer du direkte til Min side'}.</p>
     <div class="lp-field"><label for="login-email">Mail</label><input id="login-email" class="lp-input" name="email" type="email" autocomplete="email" required maxlength="254"></div>
     <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Send kode</button></div>
     <p class="lp-help">Med en profil kan du byde på charity-produkterne i Lykke Auktion. Vil du spille med i Charity Turnering? <a href="/tilmelding">Tilmeld dig her</a></p>
@@ -363,26 +399,28 @@ function login() {
 }
 
 // After login: the registration, else the auction profile, else the form to create one.
-async function participantHome() {
+async function participantHome({ redirect = true } = {}) {
   const { data, error } = await client.from('event_registrations').select('*').eq('user_id', currentUser.id);
   if (error) throw error;
+  if (data.length && redirect && NEXT) return location.assign(NEXT);
   if (data.length) return receipt(data[0]);
   const { data: profiles, error: profileError } = await client.from('auction_profiles').select('*').eq('user_id', currentUser.id);
   if (profileError) throw profileError;
+  if (profiles.length && redirect && NEXT) return location.assign(NEXT);
   if (profiles.length) return profileHome(profiles[0]);
   profileForm();
 }
 
 function profileForm() {
-  const content = shell(0, 'Opret din profil');
+  const content = shell(3, 'Dine oplysninger', { names: PROFILE_STEPS });
   content.innerHTML = `<div class="lp-split">
     <form id="auction-profile" class="lp-form" style="flex: 999 1 520px">
-      <p class="lp-lead">Med en gratis profil kan du byde på charity-produkterne i Lykke Auktion. Vinder du, sender LykkeLiga en faktura.</p>
+      <p class="lp-lead">Sidste trin. Med en gratis profil kan du byde på charity-produkterne i Lykke Auktion. Vinder du, sender LykkeLiga en faktura til adressen herunder.${NEXT ? ' Bagefter sender vi dig tilbage til auktionen.' : ''}</p>
       <div class="lp-field-row">
         <div class="lp-field"><label for="pf-name">Fulde navn</label><input id="pf-name" class="lp-input" name="name" autocomplete="name" minlength="2" maxlength="120" required></div>
         <div class="lp-field"><label for="pf-phone">Telefon</label><input id="pf-phone" class="lp-input" name="phone" type="tel" autocomplete="tel" minlength="6" maxlength="30" required></div>
       </div>
-      <div class="lp-field"><label for="pf-address">Faktureringsadresse</label><textarea id="pf-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required></textarea></div>
+      <div class="lp-field"><label for="pf-address">Faktureringsadresse</label><textarea id="pf-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required></textarea><p class="lp-help">Skriv gerne firmanavn og CVR, hvis fakturaen skal til en virksomhed. Du kan rette den senere på Min side.</p></div>
       <div class="lp-field"><label for="pf-display">Synligt navn ved bud</label><input id="pf-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" required><p class="lp-help">Vises ved dine bud, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>
       <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer, at mine oplysninger gemmes hos LykkeLiga, og at et vindende bud er bindende og faktureres efter auktionen. Dette er en testversion.</span></label>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Opret profil</button></div>
@@ -441,7 +479,7 @@ function profileHome(p) {
         ['Telefon', esc(p.phone)],
         ['Faktureringsadresse', esc(p.billing_address)],
       ],
-      'Skal noget rettes? Skriv til <a href="mailto:signe@lykkeliga.dk">signe@lykkeliga.dk</a>.',
+      contactNote(p.approved),
     )}
     <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;
@@ -449,6 +487,7 @@ function profileHome(p) {
     await client.auth.signOut();
     location.href = '/deltager';
   };
+  setupContactEdit(p);
   displayNameSection({ status: p.approved ? 'confirmed' : 'cancelled' }, '');
   loadMyBids();
   window.scrollTo(0, 0);
@@ -457,7 +496,9 @@ function profileHome(p) {
 async function sendCode(email, create, onVerified, registering = create) {
   const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: create } });
   if (error) throw new Error(error.status === 429 ? 'Vent lidt, før du beder om en ny kode.' : 'Mailen med koden kunne ikke sendes. Prøv igen eller kontakt LykkeLiga.');
-  const content = shell(registering ? 3 : 0, 'Tjek din mail', registering ? { back: { href: '#', label: 'Gå tilbage og ret' } } : {});
+  const content = registering
+    ? shell(3, 'Tjek din mail', { back: { href: '#', label: 'Gå tilbage og ret' } })
+    : shell(2, 'Tjek din mail', { names: PROFILE_STEPS });
   content.innerHTML = `<form id="verify-email" class="lp-form" style="max-width: 640px; gap: 28px">
     <p class="lp-lead">Vi har sendt en kode til <strong>${esc(email)}</strong>. Indtast den her${registering ? ' for at gennemføre tilmeldingen' : ''}. Tjek også spam.</p>
     <div class="lp-field"><label for="otp">Kode fra mailen</label><input id="otp" class="lp-input lp-input--big" name="token" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" minlength="6" maxlength="10" required autofocus style="max-width: 320px; letter-spacing: 6px"></div>
@@ -542,11 +583,12 @@ function receipt(r, { nameProblem = '', detailsProblem = '' } = {}) {
         ['Betalt', `${money(r.amount_due)}${r.discount_code ? ' (rabatkode)' : ''}`],
         ...(r.shirt_size ? [['T-shirt', esc(r.partner_shirt_size ? `${r.shirt_size} / makker ${r.partner_shirt_size}` : r.shirt_size)]] : []),
       ],
-      'Skal noget rettes? Skriv til <a href="mailto:signe@lykkeliga.dk">signe@lykkeliga.dk</a>.',
+      contactNote(!cancelled),
     )}
     <div id="player-details-slot" style="flex: 1 1 100%; display: flex"></div>
     <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;
+  setupContactEdit(r);
   playerDetailsSection(r, detailsProblem);
   displayNameSection(r, nameProblem);
   loadMyBids();

@@ -80,6 +80,14 @@ Før kørslen gemmes valgene ikke, og panelet på Min side og T-shirt-kolonnen i
 
 `node --test tests/registration-details.test.mjs` tester felterne.
 
+## Min side: ret egne oplysninger
+
+Kør `contact-details.sql` én gang efter `auction-items.sql`. Den tilføjer kun funktionen `update_my_contact(navn, telefon, faktureringsadresse)`. Funktionen retter brugerens egen budprofil og, hvis brugeren er tilmeldt turneringen, også tilmeldingen. Mailen er login og kan ikke ændres her.
+
+Før kørslen viser Min side en besked om at skrive til signe@lykkeliga.dk.
+
+`node --test tests/contact-details.test.mjs` tester funktionen.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
