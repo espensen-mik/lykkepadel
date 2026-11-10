@@ -93,7 +93,8 @@
 .lp-lot__meta { margin: 0; font: 600 13px var(--font-body); color: var(--ink-muted); }
 .lp-lot__amount { margin: 2px 0 0; font: 400 44px/1 var(--font-display); color: var(--red-text); font-variant-numeric: tabular-nums; }
 .lp-lot__ends { margin: 0; font: 700 14px/1.4 var(--font-body); text-align: right; }
-.lp-lot__body .lp-btn { margin-top: auto; }
+/* Price, countdown and button sit at the bottom, so cards in a row line up whatever the title length. */
+.lp-lot__bid { margin-top: auto; }
 .lp-lot--soon { background: var(--cream-shade); min-height: 420px; align-items: center; justify-content: center; gap: 8px; padding: 32px; text-align: center; }
 .lp-lot--soon .lp-lot__mark { margin: 0; font: 400 140px/0.9 var(--font-display); color: var(--red); }
 .lp-lot--soon .lp-lot__name { font-size: 34px; }
