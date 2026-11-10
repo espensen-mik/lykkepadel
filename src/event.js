@@ -65,8 +65,7 @@ export async function mountEvent(connectedClient, { participant = false } = {}) 
   client = connectedClient;
   main = $('#main');
   document.title = participant ? 'Min side – Lykke Padel' : 'Tilmelding – Lykke Padel';
-  // On /tilmelding the signup button would point to the page itself.
-  setHeader({ loginText: 'Log ind', showSignup: participant });
+  setHeader();
   const { data, error } = await client.auth.getUser();
   currentUser = error ? null : data.user;
   try {
@@ -315,7 +314,7 @@ function profileForm() {
 // Min side for bidders without a tournament registration.
 function profileHome(p) {
   document.title = 'Min side – Lykke Padel';
-  setHeader({ loginText: 'Min side', loginHref: '/deltager', showSignup: true });
+  setHeader({ loggedIn: true });
   main.innerHTML = `
   <section class="lp-band-brown">
     <div class="lp-wrap lp-hero">
@@ -409,7 +408,7 @@ function receipt(r, { nameProblem = '' } = {}) {
   const cancelled = r.status === 'cancelled';
   const first = r.full_name.split(' ')[0];
   document.title = 'Min side – Lykke Padel';
-  setHeader({ loginText: 'Min side', loginHref: '/deltager', showSignup: false });
+  setHeader({ loggedIn: true });
   main.innerHTML = `
   <section class="lp-band-brown">
     <div class="lp-wrap lp-hero">

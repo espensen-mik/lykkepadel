@@ -73,18 +73,17 @@ export function setTestbar(text) {
 }
 
 // Header links change with the visitor's state.
-export function setHeader({ loginText, loginHref, onLogin, showSignup = true } = {}) {
-  const login = $('#header-login');
-  const signup = $('#header-signup');
-  if (login) {
-    if (loginText) login.textContent = loginText;
-    if (loginHref) login.href = loginHref;
-    login.onclick = onLogin
-      ? (event) => {
-          event.preventDefault();
-          onLogin();
-        }
-      : null;
-  }
-  if (signup) signup.hidden = !showSignup;
+// The single account button in the header: "Log ind" when logged out, "Min side" when logged in.
+export function setHeader({ loggedIn = false, text, href, onClick } = {}) {
+  const button = $('#header-login');
+  if (!button) return;
+  button.classList.toggle('is-logged-in', loggedIn);
+  button.querySelector('.lp-account__label').textContent = text || (loggedIn ? 'Min side' : 'Log ind');
+  button.href = href || '/deltager';
+  button.onclick = onClick
+    ? (event) => {
+        event.preventDefault();
+        onClick();
+      }
+    : null;
 }

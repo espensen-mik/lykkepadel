@@ -35,7 +35,7 @@ for (const [route, [template, current]] of Object.entries(pages)) {
 }
 
 await build({
-  entryPoints: { auction: 'src/auction.js', front: 'src/front.js' },
+  entryPoints: { auction: 'src/auction.js', front: 'src/front.js', header: 'src/header.js' },
   outdir: 'dist',
   bundle: true,
   format: 'esm',
