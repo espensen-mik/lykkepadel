@@ -51,6 +51,10 @@
 .lp-account.is-logged-in { background: var(--cream); border-color: var(--cream); color: var(--brown); }
 .lp-account.is-logged-in:hover { background: var(--sand); border-color: var(--sand); }
 .lp-account:focus-visible { outline: 3px solid var(--red-light); outline-offset: 3px; }
+.lp-account-logout { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px 0 12px; border: 2px solid var(--line-dark); border-radius: 999px; color: var(--sand); font: 600 15px var(--font-body); text-decoration: none; transition: border-color 200ms var(--ease, ease), color 200ms var(--ease, ease); }
+.lp-account-logout[hidden] { display: none; }
+.lp-account-logout:hover { border-color: var(--cream); color: var(--cream); }
+.lp-account-logout:focus-visible { outline: 3px solid var(--red-light); outline-offset: 3px; }
 
 /* SectionHeading */
 .lp-heading { display: flex; flex-direction: column; gap: 20px; }
@@ -437,8 +441,10 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
 @media (max-width: 640px) {
   .lp-header__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; padding-block: 12px; }
   .lp-header__logo img { height: 18px; }
-  .lp-header__actions { grid-column: 2; grid-row: 1; gap: 2px; }
+  .lp-header__actions { grid-column: 2; grid-row: 1; gap: 6px; }
   .lp-account { min-height: 38px; padding: 0 12px 0 10px; gap: 6px; font-size: 14px; }
+  .lp-account-logout { min-height: 38px; width: 38px; padding: 0; justify-content: center; }
+  .lp-account-logout__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .lp-nav { grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; overflow-x: auto; gap: 20px; font-size: 14px; scrollbar-width: none; }
   .lp-nav a { white-space: nowrap; }
 }

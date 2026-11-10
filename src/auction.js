@@ -105,7 +105,7 @@ function instagram(lot) {
 
 function updateHeader() {
   if (adminPage) {
-    setHeader({ loggedIn: Boolean(user), text: user ? 'Log ud' : 'Log ind', href: '/admin', onClick: user ? logout : showAdminLogin });
+    setHeader({ loggedIn: Boolean(user), text: user ? 'Log ud' : 'Log ind', href: '/admin', onClick: user ? logout : showAdminLogin, logout: false });
     return;
   }
   setHeader({ loggedIn: Boolean(user) });
