@@ -8,6 +8,8 @@ export const examplePlayers = [
 export const exampleItems = [
  {name:'LykkeLiga ShowKamp på din virksomhed',category:'Oplevelse',image_url:'/images/brand/spillere2_16_9.jpg',value_text:'Uvurderligt',
   description:'En helt unik mulighed for at se lykkelig håndbold i verdensklasse ude på din egen virksomhed. 10 af vores allerstørste stjerner møder op og viser, hvor lykkeskabet skal stå, når de spiller en showkamp på jeres parkeringsplads, i jeres reception eller på direktørens kontor. LykkeLiga medbringer mål og dommer og giver jeres virksomhed et eksklusivt skud lykke i arbejdsdagen.'},
+ {name:'Personlig video-hyldest med Rikke & Magda',category:'Oplevelse',image_url:'/auktioner/rikkeogmagda.jpeg',
+  description:'Trænger du til ros for dit padelspil? Hvis du vinder denne auktion, laver LykkeLiga-ikonerne Rikke Nielsen og datteren Magda en personlig video, hvor de roser dig for dine evner på padelbanen. Videoen kan fx bruges på dine sociale kanaler til at overbevise alle dine venner og kontakter om, at du faktisk ER en rigtig dygtig padelspiller.'},
 ];
 
 export function initialLots() {
@@ -15,8 +17,8 @@ export function initialLots() {
   ends_at:new Date(Date.now()+(3+i)*86400000+7200000).toISOString(),starting_price:500,
   current_bid:[3500,5000,2000][i],bid_count:[7,10,4][i],status:'live'}));
  const items=exampleItems.map((item,i)=>({...item,kind:'item',id:`demo-${partners.length+i+1}`,
-  ends_at:new Date(Date.now()+2*86400000+3600000).toISOString(),starting_price:5000,
-  current_bid:12000,bid_count:5,status:'live'}));
+  ends_at:new Date(Date.now()+[2,4][i]*86400000+3600000).toISOString(),starting_price:[5000,1000][i],
+  current_bid:[12000,2500][i],bid_count:[5,3][i],status:'live'}));
  return [...items,...partners];
 }
 

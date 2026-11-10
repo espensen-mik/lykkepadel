@@ -15,7 +15,7 @@ const participantPage = /^\/deltager\/?$/.test(path);
 if (path.startsWith('/administration')) history.replaceState(null, '', '/admin' + location.search + location.hash);
 
 const main = $('#main');
-const DEMO_KEY = 'lykke-auction-demo-v3';
+const DEMO_KEY = 'lykke-auction-demo-v4';
 const STEP = 500;
 const MAX_BID = 10000000;
 
@@ -85,7 +85,7 @@ const canBid = (lot) => demo || (profile?.approved === true && (lot.kind === 'it
 function safeImage(value) {
   try {
     const url = new URL(value, location.origin);
-    if (url.origin === location.origin && url.pathname.startsWith('/images/')) return url.href;
+    if (url.origin === location.origin && /^\/(images|auktioner)\//.test(url.pathname)) return url.href;
     return url.protocol === 'https:' ? url.href : '/images/lykke-padel.svg';
   } catch {
     return '/images/lykke-padel.svg';
