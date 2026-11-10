@@ -112,37 +112,47 @@
 
   <section class="lp-band-cream" id="program">
     <div class="lp-wrap lp-section" style="display: flex; flex-direction: column; gap: 40px">
-      <div class="lp-section-head">
-        <div class="lp-heading">
-          <p class="lp-eyebrow">2. april 2027 · Pakhus77</p>
-          <h2 class="lp-display lp-display--m">Program</h2>
-        </div>
-        <p class="lp-lead" style="max-width: 460px">Én dag, to dele af samme event. Fra kl. 16.00 smelter de sammen, når dørene åbner, og publikum ser finalerne.</p>
+      <div class="lp-heading">
+        <p class="lp-eyebrow">2. april 2027 · Pakhus77</p>
+        <h2 class="lp-display lp-display--m">Program</h2>
+        <p class="lp-text" style="max-width: 640px">Én dag, to dele af samme event. Fra kl. 16.00 kører de side om side, når dørene åbner for publikum.</p>
       </div>
-      <div class="lp-parts">
-        <section class="lp-part" aria-labelledby="part-turnering">
-          <p><span class="lp-pill lp-pill--lead">Lukket · kun for deltagere</span></p>
-          <h3 class="lp-part__title" id="part-turnering">Charity Turnering</h3>
-          <p class="lp-part__time">Kl. 12.30–17.00</p>
-          <dl class="lp-timeline">
-            <div><dt>12.30</dt><dd><p class="lp-step__title">Turneringen begynder</p><p class="lp-step__text">For erhvervslivet, partnere og inviterede gæster.</p></dd></div>
-            <div><dt>16.30</dt><dd><p class="lp-step__title">Finaler</p><p class="lp-step__text">Spilles foran publikum i Charity Showkamp.</p></dd></div>
-            <div><dt>17.00</dt><dd><p class="lp-step__title">Turneringen slutter</p><p class="lp-step__text">Deltagerne fortsætter med VIP-adgang til Charity Showkamp: spisning, drikkevarer og VIP-område.</p></dd></div>
-          </dl>
-          <a class="lp-btn lp-btn--secondary lp-btn--small" href="/charity-turnering" style="align-self: flex-start; border-width: 3px">Om Charity Turnering</a>
-        </section>
-        <section class="lp-part lp-part--open" aria-labelledby="part-showkamp">
-          <p><span class="lp-pill lp-pill--live">Åbent · op til 500 tilskuere</span></p>
-          <h3 class="lp-part__title" id="part-showkamp">Charity Showkamp</h3>
-          <p class="lp-part__time">Fra kl. 16.00 · entré 200 kr.</p>
-          <dl class="lp-timeline">
-            <div><dt>16.00</dt><dd><p class="lp-step__title">Dørene åbner</p><p class="lp-step__text">Madboder, drikkevarer, NORMAL × LykkeLiga-tombola og DJ.</p></dd></div>
-            <div><dt>16.30</dt><dd><p class="lp-step__title">Finaler fra Charity Turnering</p></dd></div>
-            <div><dt>17.30</dt><dd><p class="lp-step__title">Fundraising hour · til 18.30</p><p class="lp-step__text">Beat the pro, kicksmash- og stopboldkonkurrence.</p></dd></div>
-            <div><dt>19.00</dt><dd><p class="lp-step__title">Showkamp</p><p class="lp-step__text">Spillerne offentliggøres senere.</p></dd></div>
-          </dl>
-          <a class="lp-btn lp-btn--secondary lp-btn--small" href="/charity-showkamp" style="align-self: flex-start; border-width: 3px">Om Charity Showkamp</a>
-        </section>
+      <div class="lp-schedule" role="table" aria-label="Program for Lykke Padel">
+        <div class="lp-schedule__row lp-schedule__head" role="row">
+          <span role="columnheader" class="lp-schedule__time"><span class="sr-only">Tid</span></span>
+          <a role="columnheader" class="lp-schedule__lane-head lp-schedule__lane-head--turnering" href="/charity-turnering"><span class="lp-schedule__lane-title">Charity Turnering</span><span class="lp-schedule__lane-meta">Lukket · kun for deltagere</span></a>
+          <a role="columnheader" class="lp-schedule__lane-head lp-schedule__lane-head--showkamp" href="/charity-showkamp"><span class="lp-schedule__lane-title">Charity Showkamp</span><span class="lp-schedule__lane-meta">Åbent · op til 500 tilskuere · 200 kr.</span></a>
+        </div>
+        <div class="lp-schedule__row" role="row">
+          <span role="cell" class="lp-schedule__time">12.30</span>
+          <div role="cell" class="lp-schedule__cell is-turnering"><p class="lp-schedule__title">Turneringen begynder</p><p class="lp-schedule__text">For erhvervslivet, partnere og inviterede gæster.</p></div>
+          <div role="cell" class="lp-schedule__cell"></div>
+        </div>
+        <div class="lp-schedule__row" role="row">
+          <span role="cell" class="lp-schedule__time">16.00</span>
+          <div role="cell" class="lp-schedule__cell is-turnering is-empty"></div>
+          <div role="cell" class="lp-schedule__cell is-showkamp"><p class="lp-schedule__title">Dørene åbner</p><p class="lp-schedule__text">Madboder, drikkevarer, NORMAL × LykkeLiga-tombola og DJ.</p></div>
+        </div>
+        <div class="lp-schedule__row" role="row">
+          <span role="cell" class="lp-schedule__time">16.30</span>
+          <div role="cell" class="lp-schedule__cell is-turnering"><p class="lp-schedule__title">Finaler</p><p class="lp-schedule__text">Spilles foran publikum.</p></div>
+          <div role="cell" class="lp-schedule__cell is-showkamp is-empty"></div>
+        </div>
+        <div class="lp-schedule__row" role="row">
+          <span role="cell" class="lp-schedule__time">17.00</span>
+          <div role="cell" class="lp-schedule__cell is-turnering is-end"><p class="lp-schedule__title">Turneringen slutter</p><p class="lp-schedule__text">Deltagerne fortsætter med VIP-adgang: spisning, drikkevarer og VIP-område.</p></div>
+          <div role="cell" class="lp-schedule__cell is-showkamp is-empty"></div>
+        </div>
+        <div class="lp-schedule__row" role="row">
+          <span role="cell" class="lp-schedule__time">17.30</span>
+          <div role="cell" class="lp-schedule__cell"></div>
+          <div role="cell" class="lp-schedule__cell is-showkamp"><p class="lp-schedule__title">Fundraising hour · til 18.30</p><p class="lp-schedule__text">Beat the pro, kicksmash- og stopboldkonkurrence.</p></div>
+        </div>
+        <div class="lp-schedule__row" role="row">
+          <span role="cell" class="lp-schedule__time">19.00</span>
+          <div role="cell" class="lp-schedule__cell"></div>
+          <div role="cell" class="lp-schedule__cell is-showkamp"><p class="lp-schedule__title">Showkamp</p><p class="lp-schedule__text">Spillerne offentliggøres senere.</p></div>
+        </div>
       </div>
       <p class="lp-help">Programmet er foreløbigt og kan ændre sig.</p>
     </div>
