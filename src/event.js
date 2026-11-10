@@ -1,5 +1,6 @@
 import { packages, validateRegistration } from './registration.js';
 import { $, esc, money, field, errorHtml, errorMessage, setHeader } from './ui.js';
+import { mountMyBids } from './my-bids.js';
 
 // Registration (/tilmelding) and the participant page (/deltager), backed by Supabase.
 const DRAFT_KEY = 'lykke-event-draft-v2';
@@ -255,6 +256,11 @@ async function displayNameSection(r, nameProblem) {
   render(name, nameProblem ? `Vi kunne ikke gemme dit synlige navn: ${nameProblem}` : '');
 }
 
+// Min side: show "Dine bud" once the list has loaded.
+function loadMyBids() {
+  return mountMyBids(client, $('#dine-bud'));
+}
+
 // Min side: log in or create a free profile with a one-time code.
 function login() {
   const content = shell(0, 'Min side');
@@ -329,6 +335,7 @@ function profileHome(p) {
       </dl>
     </div>
   </section>
+  <section class="lp-wrap lp-section lp-mybids-section" id="dine-bud" aria-label="Dine bud" hidden></section>
   <div class="lp-wrap lp-section lp-split" style="gap: 56px">
     <section style="flex: 999 1 520px; display: flex; flex-direction: column; gap: 24px">
       <h2 class="lp-display lp-display--s">Byd for lykke</h2>
@@ -354,6 +361,7 @@ function profileHome(p) {
     location.href = '/deltager';
   };
   displayNameSection({ status: p.approved ? 'confirmed' : 'cancelled' }, '');
+  loadMyBids();
   window.scrollTo(0, 0);
 }
 
@@ -424,6 +432,7 @@ function receipt(r, { nameProblem = '' } = {}) {
       </dl>
     </div>
   </section>
+  <section class="lp-wrap lp-section lp-mybids-section" id="dine-bud" aria-label="Dine bud" hidden></section>
   <div class="lp-wrap lp-section lp-split" style="gap: 56px">
     <section style="flex: 999 1 520px; display: flex; flex-direction: column; gap: 24px">
       <h2 class="lp-display lp-display--s">${cancelled ? 'Hvad nu?' : r.kind === 'individual' ? 'Find din makker' : 'I er klar'}</h2>
@@ -448,6 +457,7 @@ function receipt(r, { nameProblem = '' } = {}) {
     <div id="display-name-slot" style="flex: 1 1 100%; display: flex"></div>
   </div>`;
   displayNameSection(r, nameProblem);
+  loadMyBids();
   $('#event-logout').onclick = async () => {
     await client.auth.signOut();
     location.href = '/deltager';

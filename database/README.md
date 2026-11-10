@@ -64,6 +64,14 @@ Siden virker både før og efter kørslen. Før kørslen kan admin kun oprette p
 
 `node --test tests/auction-items.test.mjs` tester budreglerne for begge typer.
 
+## Min side: Dine bud
+
+Kør `my-bids.sql` én gang efter `auction-items.sql`. Den tilføjer kun funktionen `my_auction_bids()`. Funktionen giver den indloggede bruger én række pr. publiceret auktion, brugeren har budt på: højeste eget bud, aktuel pris, om brugeren fører, og om auktionen er slut. Den viser aldrig andre budgiveres identitet, og anonyme kan ikke kalde den.
+
+Før kørslen er sektionen "Dine bud" på Min side bare skjult.
+
+`node --test tests/my-bids.test.mjs` tester listen.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
