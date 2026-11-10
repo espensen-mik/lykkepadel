@@ -8,7 +8,7 @@
   --red: #ff3828; --red-deep: #d42f20; --red-text: #c42a1c; --red-light: #ff6a5c;
   --brown: #2b1513; --ink: #3a1c18; --ink-muted: #6b4a44; --line-dark: #5a3a33; --line-accent: #ffb3a8;
   --font-display: "Bebas Neue", "Arial Narrow", sans-serif; --font-body: Archivo, Arial, sans-serif;
-  --space-1: 4px; --space-2: 8px; --space-3: 14px; --space-4: 16px; --space-5: 24px; --space-6: 28px; --space-7: 48px; --space-8: 72px; --space-9: 88px;
+  --space-band: 80px; --space-1: 4px; --space-2: 8px; --space-3: 14px; --space-4: 16px; --space-5: 24px; --space-6: 28px; --space-7: 48px; --space-8: 72px; --space-9: 88px;
   --radius-none: 0; --radius-pill: 999px; --content-max: 1240px; --touch-min: 44px; --logo-header: 30px;
 }
 
@@ -366,4 +366,108 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-section { padding-block: 64px; }
   .lp-hero { padding-block: 48px 64px; }
   .lp-dialog__body { padding: 36px 20px 24px; }
+}
+
+/* ===== Mobil (≤ 640px): samme design, roligere skala =====
+   Desktop er uændret. Overskrifter har nogle steder inline-størrelser,
+   derfor !important på skriftstørrelser her. */
+@media (max-width: 640px) {
+  :root { --space-7: 32px; --space-8: 44px; --space-9: 56px; --space-band: 52px; }
+
+  .lp-section { padding-block: var(--space-9); }
+  .lp-hero { padding-block: var(--space-8) var(--space-9); }
+
+  /* Typografi */
+  .lp-display { font-size: 44px !important; line-height: 0.92; }
+  .lp-display--hero, .lp-feature--hero .lp-display--hero { font-size: 52px !important; line-height: 0.9; }
+  .lp-detail-name { font-size: 56px; }
+  .lp-eyebrow { font-size: 19px; letter-spacing: 1.5px; }
+  .lp-lead { font-size: 18px; line-height: 1.5; }
+  .lp-text { font-size: 16px; }
+  .lp-text--l { font-size: 17px; }
+  .lp-band-red .lp-big-note { font-size: 18px; margin-top: 16px; }
+  .lp-heading { gap: 14px; }
+
+  /* Knapper */
+  .lp-btn--large { min-height: 52px; padding: 0 24px; font-size: 16px; }
+  .lp-actions { gap: 10px; }
+
+  /* Hero med foto */
+  .lp-feature__media { aspect-ratio: 16 / 9; }
+  .lp-feature__content { margin-top: -36px; gap: 18px; padding-bottom: 48px; }
+  .lp-feature--hero .lp-feature__content { padding-bottom: 32px; }
+
+  /* De to events */
+  .lp-stages { gap: 14px; }
+  .lp-stage { padding: 22px 20px; gap: 10px; }
+  .lp-stage__title { font-size: 34px; }
+  .lp-stage__time { font-size: 14px; }
+  .lp-stage__list { font-size: 15px; gap: 6px; }
+  .lp-stage__list li::before { margin-top: 7px; }
+  .lp-stage .lp-btn { min-height: 46px; font-size: 15px; margin-top: 6px; }
+
+  /* Nedtælling: etiket og tal på hver sin linje, datoen står allerede i toppen */
+  .lp-countdown__inner { padding-block: 14px 16px; gap: 4px 16px; }
+  .lp-countdown__label { font-size: 18px; width: 100%; }
+  .lp-countdown__time { gap: 18px; }
+  .lp-countdown__time p { font-size: 40px; }
+  .lp-countdown__time span { font-size: 18px; }
+  .lp-countdown__meta { display: none; }
+
+  /* Nøgletal og fakta */
+  .lp-stats > div { padding: 12px 0; }
+  .lp-stats dd { font-size: 30px; }
+  .lp-facts dd { font-size: 30px; }
+  .lp-band-cream .lp-facts dt { font-size: 26px; }
+  .lp-facts > div { padding-top: 16px; }
+
+  /* Makkerkort */
+  .lp-lots { gap: 32px; }
+  .lp-lot__name { font-size: 36px; }
+  .lp-lot__amount { font-size: 36px; }
+  .lp-lot__body { gap: 12px; padding-top: 14px; }
+  .lp-lot--soon { min-height: 240px; }
+  .lp-lots:not(.lp-lots--carousel) .lp-lot__media { aspect-ratio: 4 / 3; }
+  .lp-chips { gap: 8px; }
+  .lp-chip { min-height: 40px; padding: 0 14px; font-size: 14px; border-width: 2px; }
+  .lp-lot--soon .lp-lot__mark { font-size: 96px; }
+
+  /* Karrusel: kortene ligger side om side og kan swipes */
+  .lp-lots--carousel {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 72%; grid-template-columns: none;
+    gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+    margin-inline: calc(-1 * var(--space-5)); padding-inline: var(--space-5); scroll-padding-inline: var(--space-5);
+  }
+  .lp-lots--carousel::-webkit-scrollbar { display: none; }
+  .lp-lots--carousel > * { scroll-snap-align: start; min-width: 0; }
+  .lp-lots--carousel .lp-lot__name { font-size: 30px; }
+
+  /* Budfelt */
+  .lp-panel { padding: 20px; gap: 14px; }
+  .lp-bid-stats dd { font-size: 36px; }
+  .lp-stepper__btn { width: 48px; height: 48px; }
+  .lp-input--big { min-height: 56px; font-size: 34px; }
+
+  /* Trin, tidslinje og priskort */
+  .lp-steps { gap: 20px; }
+  .lp-step__num { font-size: 80px; }
+  .lp-step__title { font-size: 19px; }
+  .lp-timeline div { gap: 16px; padding: 16px 0; grid-template-columns: 72px minmax(0, 1fr); }
+  .lp-timeline dt { font-size: 28px; }
+  .lp-prices { gap: 12px; }
+  .lp-price { padding: 20px; gap: 6px; }
+  .lp-price__name { font-size: 32px; }
+  .lp-price__amount { font-size: 44px; }
+  .lp-choice { padding: 22px 20px; }
+
+  /* Footer */
+  .lp-footer__inner { padding-block: 48px 28px; }
+  .lp-footer__top { gap: 32px; }
+  .lp-footer__brand img { max-width: 240px; }
+  .lp-footer__date { font-size: 20px; }
+  .lp-footer__partners { gap: 24px 40px; }
+  .lp-footer__logo { height: 48px; }
+  .lp-footer__logo img { height: 42px; }
+  .lp-footer__logo--normal img { height: 48px; }
+  .lp-footer__bottom { margin-top: 32px; padding-top: 18px; }
 }
