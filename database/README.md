@@ -135,7 +135,7 @@ Selve fakturaerne laves fortsat i jeres regnskabsprogram. Før kørslen kan tilm
 
 Kør `winner-mails.sql` én gang efter `invoice-payments.sql`. Den gemmer, hvornår og til hvilken mail hver vinder har fået en vindermail, og viser det i vinderlisten. Den tilføjer `mark_auction_winner_mail(lot, mail)`, som kun administratorer kan kalde, og kun med vinderens egen mail.
 
-Mailen sendes af `/api/winner-mails` gennem Resend fra `padel@forms.lykkeliga.dk` med svar til signe@lykkeliga.dk. Funktionen kræver `RESEND_API_KEY` i Vercel. Den bruger administratorens egen Supabase-session, så der skal ikke ligge en service-nøgle i Vercel. Teksten findes i `src/winner-mail.js`.
+Mailen sendes af `/api/winner-mails` gennem Resend fra `padel@forms.lykkeliga.dk` med svar til signe@lykkeliga.dk. Funktionen kræver Resend-nøglen i Vercel som `Resend_Api_Key` (eller `RESEND_API_KEY`). Den bruger administratorens egen Supabase-session, så der skal ikke ligge en service-nøgle i Vercel. Teksten findes i `src/winner-mail.js`.
 
 I admin under Vindere kan man se hver mail, sende en testmail til sig selv, sende til én vinder eller sende alle, der ikke har fået en mail.
 
