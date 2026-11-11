@@ -23,7 +23,8 @@ export default async function handler(req, res, { fetch: send = fetch, pause = w
   if (req.method !== 'POST') return reply(res, 405, { error: 'Brug POST.' });
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  const resend = process.env.RESEND_API_KEY;
+  // The key is saved in Vercel as Resend_Api_Key; RESEND_API_KEY also works.
+  const resend = process.env.RESEND_API_KEY || process.env.Resend_Api_Key;
   if (!url || !key || !resend) return reply(res, 503, { error: 'Mailafsendelse er ikke sat op (RESEND_API_KEY mangler i Vercel).' });
   const token = /^Bearer ([\w.-]+)$/.exec(req.headers?.authorization || '')?.[1];
   if (!token) return reply(res, 401, { error: 'Log ind som administrator.' });

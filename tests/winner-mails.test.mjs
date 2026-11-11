@@ -48,6 +48,10 @@ test('the mail names the prize and amount and escapes the winner data', () => {
 test('needs a key, a login and a request id', async () => {
   delete process.env.RESEND_API_KEY;
   assert.equal((await call({ lots: [LOT], request: REQUEST }, fake())).statusCode, 503);
+  process.env.Resend_Api_Key = 're_y';
+  await call({ lots: [LOT], request: REQUEST }, fake());
+  assert.equal(calls.find((c) => c.href.includes('resend.com')).init.headers.Authorization, 'Bearer re_y');
+  delete process.env.Resend_Api_Key;
   process.env.RESEND_API_KEY = 're_x';
   assert.equal((await call({ lots: [LOT], request: REQUEST }, fake(), '')).statusCode, 401);
   assert.equal((await call({ lots: [LOT] }, fake())).statusCode, 400);
