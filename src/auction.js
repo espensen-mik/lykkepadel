@@ -4,7 +4,7 @@ import { termsFor, keyTerms, stepsFor, faqFor } from './terms.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
 import { imageEditor, isProcessed } from './image-crop.js';
-import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, downloadCsv } from './ui.js';
+import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, rememberAdmin, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
 const path = location.pathname;
@@ -48,6 +48,7 @@ async function loadIdentity() {
   for (const result of [profiles, admin, access]) if (result.error) throw result.error;
   profile = profiles.data[0] || null;
   isAdmin = admin.data === true;
+  rememberAdmin(isAdmin ? user.id : null);
   eventAccess = access.data === true;
 }
 
@@ -90,15 +91,20 @@ function instagram(lot) {
 // ---------- Header ----------
 
 function updateHeader() {
+  if (adminPage && isAdmin) {
+    setHeader({ loggedIn: true, admin: true, onLogout: logout });
+    return;
+  }
   if (adminPage) {
     setHeader({ loggedIn: Boolean(user), text: user ? 'Log ud' : 'Log ind', href: '/admin', onClick: user ? logout : showAdminLogin, logout: false });
     return;
   }
-  setHeader({ loggedIn: Boolean(user) });
+  setHeader({ loggedIn: Boolean(user), admin: isAdmin });
 }
 
 async function logout() {
   await client.auth.signOut();
+  rememberAdmin(null);
   user = profile = null;
   isAdmin = eventAccess = false;
   closeModal();
