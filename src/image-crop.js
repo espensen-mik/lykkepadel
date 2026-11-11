@@ -59,8 +59,8 @@ export function toBlob(canvas) {
   );
 }
 
-// Images that already carry the duotone: uploaded to the bucket, or made in the demo.
-export const isProcessed = (url) => /\/storage\/v1\/object\/public\/auction-images\/|^data:image\/jpeg;/.test(url || '');
+// Images that already carry the duotone: uploaded to the bucket.
+export const isProcessed = (url) => /\/storage\/v1\/object\/public\/auction-images\//.test(url || '');
 
 // A small editor: choose or drop a file, drag the preview to move the crop, arrow keys nudge it.
 export function imageEditor(root, { current, onError }) {
@@ -139,9 +139,6 @@ export function imageEditor(root, { current, onError }) {
     // Full-size result for upload.
     async blob() {
       return toBlob(render(document.createElement('canvas'), image, focus));
-    },
-    dataUrl() {
-      return render(document.createElement('canvas'), image, focus, { width: 500, height: 550 }).toDataURL('image/jpeg', 0.8);
     },
   };
 }

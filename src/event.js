@@ -260,7 +260,7 @@ function review() {
   content.innerHTML = `<div class="lp-split">
     <form id="event-confirm" class="lp-form" style="flex: 999 1 520px">
       <dl class="lp-summary" style="border-top: 2px solid var(--ink)">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd style="text-align: right; white-space: pre-line">${v}</dd></div>`).join('')}</dl>
-      <label class="lp-check"><input name="confirm" type="checkbox" required><span>Jeg vil gemme denne testtilmelding hos LykkeLiga. Oplysningerne bruges til deltagelse og auktionsadgang. Der trækkes ingen penge, og bud i testauktionen faktureres ikke.</span></label>
+      <label class="lp-check"><input name="confirm" type="checkbox" required><span>Jeg bekræfter min tilmelding. Oplysningerne gemmes hos LykkeLiga og bruges til deltagelse og auktionsadgang.</span></label>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">${currentUser ? 'Bekræft tilmelding' : 'Send kode til min mail'}</button></div>
     </form>
     ${summary(
@@ -277,7 +277,7 @@ function review() {
     details();
   };
   formAction('#event-confirm', async () => {
-    if (quote.amount_due !== 0) throw new Error('Betaling er ikke åbnet endnu. Brug en gyldig rabatkode for at gennemføre testtilmeldingen.');
+    if (quote.amount_due !== 0) throw new Error('Betaling er ikke åbnet endnu. Brug en gyldig rabatkode for at gennemføre tilmeldingen.');
     if (currentUser) await complete();
     else await sendCode(draft.email, true, complete);
   });
@@ -438,7 +438,7 @@ function profileForm() {
       </div>
       <div class="lp-field"><label for="pf-address">Faktureringsadresse</label><textarea id="pf-address" class="lp-input" name="address" autocomplete="street-address" minlength="5" maxlength="500" required></textarea><p class="lp-help">Skriv gerne firmanavn og CVR, hvis fakturaen skal til en virksomhed. Du kan rette den senere på Min side.</p></div>
       <div class="lp-field"><label for="pf-display">Synligt navn ved bud</label><input id="pf-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" required><p class="lp-help">Vises ved dine bud, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>
-      <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer, at mine oplysninger gemmes hos LykkeLiga, og at et vindende bud er bindende og faktureres efter auktionen. Dette er en testversion.</span></label>
+      <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer, at mine oplysninger gemmes hos LykkeLiga, og at et vindende bud er bindende og faktureres efter auktionen.</span></label>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Opret profil</button></div>
     </form>
     <aside class="lp-panel" style="flex: 1 1 320px">

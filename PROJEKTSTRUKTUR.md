@@ -16,7 +16,7 @@ Dette dokument beskriver projektets tekniske struktur og funktionelle forløb. D
 8. [Login, identitet og administratorer](#8-login-identitet-og-administratorer)
 9. [Tilmeldingsforløbet](#9-tilmeldingsforløbet)
 10. [Auktionsfunktionaliteten i dybden](#10-auktionsfunktionaliteten-i-dybden)
-11. [Demo, Supabase-test og eksempeldata](#11-demo-supabase-test-og-eksempeldata)
+11. [Data og synlighed](#11-data-og-synlighed)
 12. [Mail og Resend](#12-mail-og-resend)
 13. [SQL-historik og ændringer af databasen](#13-sql-historik-og-ændringer-af-databasen)
 14. [Tests og verifikation](#14-tests-og-verifikation)
@@ -99,7 +99,7 @@ Supabase Auth → SMTP → Resend → modtagerens mail
 > - Nye statiske sider: `/om-dagen` (`src/om-dagen.html`, inkl. program på `#program`) og `/sagen` (`src/sagen.html`).
 > - `/forsidetest` og `src/front-test.*` er fjernet; adressen sender videre til `/auktion`, som er den kommende forside.
 > - `src/select.js` er fjernet; admin bruger almindelige `select`-felter.
-> - Den gamle konto-kode med adgangskode, nulstilling af adgangskode og manuel budprofil (`register_bidder`) samt den lokale demotilmelding (`/tilmelding?demo=1`) er fjernet fra `auction.js`. I demo (`/auktion?demo=1`) kan man byde lokalt uden tilmelding. Databasen er uændret.
+> - Den gamle konto-kode med adgangskode, nulstilling af adgangskode og manuel budprofil (`register_bidder`) samt den lokale demotilmelding (`/tilmelding?demo=1`) er fjernet fra `auction.js`. Databasen er uændret.
 > Afsnittene nedenfor beskriver delvist den tidligere struktur.
 
 ### 3.1 Mapper og centrale filer
@@ -125,7 +125,7 @@ Supabase Auth → SMTP → Resend → modtagerens mail
 
 **`src/registration.js`** indeholder kategorier/priser, klientvalidering og helpers til den særskilte browserdemo. Priserne findes også som autoritative regler i SQL; klientværdierne alene kan ikke oprette en gyldig tilmelding.
 
-**`src/demo.js`** definerer de tre aktuelle eksempelprofiler og genererer lokale demoauktioner med eksempelbud og relative sluttider.
+**`src/front.js`** driver nedtællingen på `/forsidetest` og henter auktioner med status Live til forsidens karrusel.
 
 **`src/front-test.js`** bygger de tre eksempelkort på `/forsidetest`. Denne side læser i den aktuelle kode ikke auktionerne fra Supabase.
 
@@ -136,15 +136,14 @@ Supabase Auth → SMTP → Resend → modtagerens mail
 ### 3.3 Ruter
 
 - `/`: offentlig landing page.
-- `/forsidetest`: separat, `noindex`-markeret eksempel på en kommende forside med information, tilmelding og tre eksempelauktioner.
-- `/auktion`: oversigt over Supabase-auktioner, når forbindelsen er aktiveret; ellers kan der være automatisk browserdemo som beskrevet nedenfor.
+- `/forsidetest`: separat, `noindex`-markeret eksempel på en kommende forside med information, tilmelding og de auktioner, der er Live.
+- `/auktion`: oversigt over auktioner med status Live, når forbindelsen er aktiveret.
 - `/auktion#spiller/<id>`: detaljeside for en auktion. ID'et læses fra URL-fragmentet; der er ikke en særskilt serverrute for hver spiller.
 - `/tilmelding`: aktuel eventtilmelding.
 - `/tilmelding?type=individual` og `?type=pair`: forvalg af kategori, ikke en pris- eller adgangsgodkendelse.
 - `/deltager`: login med mailkode og visning af egen eventtilmelding.
 - `/admin`: administration med Google-login og databasekontrolleret autorisation.
 - `/administration`: kompatibilitetsadresse for tidligere links og OAuth-retur. Vercel omdirigerer til `/admin`; klienten normaliserer også adressen.
-- `?demo=1`: vælger lokal browserdemo på de relevante auktions-/adminruter. `/tilmelding?demo=1` anvender den ældre lokale testtilmelding.
 
 `src/auction.html` er den fælles HTML-skal til `/auktion`, `/tilmelding`, `/deltager`, `/admin` og `/administration`. JavaScript vælger funktion ud fra adressen. `/forsidetest` har sin egen HTML-skal.
 
@@ -575,35 +574,9 @@ Det er en central åben forretningsregel: deltageren skal normalt kun have én m
 
 Der er heller ikke implementeret automatisk matching af dem, der ikke vinder, eller sammensætning af endelige hold til arrangementet.
 
-## 11. Demo, Supabase-test og eksempeldata
+## 11. Data og synlighed
 
-Der er tre adskilte begreber, som ikke må forveksles.
-
-### 11.1 Browserdemo
-
-`/auktion?demo=1` og `/admin?demo=1` arbejder med lokale lots i `sessionStorage` under `lykke-auction-demo-makkere-v2`. ID'er som `demo-1` er lokale identifikatorer, ikke database-UUID'er. Eksempelbud opdaterer kun browserdata.
-
-Demo-admin er tilsigtet tilgængelig uden rigtig Google-autorisation, når `demo=1` er valgt. Det giver ikke adgang til rigtig Supabase-administration.
-
-Den ældre `/tilmelding?demo=1` gemmer en lokal testregistrering under `lykke-event-registration-v1`. `canTestBid()` tillader kun lokale bud, når denne registrering er individuel og har `test=true`.
-
-**Aktuel integrationsbegrænsning:** demoauktionens almindelige tilmeldingslink peger på `/tilmelding` uden `demo=1`. En rigtig Supabase-testtilmelding opretter ikke automatisk den lokale demo-registrering. Budadgang i demo og i Supabase er derfor ikke ét fælles flow.
-
-### 11.2 Supabase-tilsluttet test
-
-De normale ruter bruger rigtige Auth-konti og gemmer registreringer/bud i projektets database. Data består på tværs af enheder og browsersessioner. Betalingsmodellen og vilkårene er dog fortsat testbaserede.
-
-Hvis konfigurationsendpointet svarer 404 på den offentlige auktionsrute, kan klienten skifte til browserdemo. Den fallback bruges ikke til at give rigtig adminadgang, og en server-/konfigurationsfejl med 503 er ikke det samme som bevidst deaktivering med 404.
-
-### 11.3 Testforsidens tre profiler og SQL-seed
-
-`/forsidetest` viser Emil Lilleøre, Emil Okkels og Stig Tøfting fra `demo.js`, med lokale billeder og Instagram-brugernavne. De klikker videre til demoauktionen, mens linket til hele auktionen går til `/auktion`. Instagram er i denne version et frontendfelt i eksempeldatasættet; der er endnu ikke en `instagram`-kolonne eller et tilsvarende adminfelt i `auction_lots`.
-
-Testforsidens kald til `initialLots()` skaber nye relative sluttider ved indlæsning. Demoauktionens sessionlagring kan holde på tidligere genererede sluttider og ændrede demo-bud. De to visninger har derfor ikke nødvendigvis identiske nedtællinger eller beløb i samme browsersession. De er ikke et fælles vedvarende datagrundlag.
-
-Billederne ligger i `public/images/Makker/`. Mappens store M er relevant ved deployment på et case-sensitivt filsystem. De lokale eksempelstier bliver ikke automatisk konverteret til databaseposter.
-
-`database/auction-demo-seed.sql` er et andet datasæt: seks oprindelige fiktive profiler som databasekladder uden bud. Filen skal ikke genkøres for at opdatere de aktuelle tre frontendeksempler. Eventuelle manuelle ændringer af databaseindholdet fremgår ikke nødvendigvis af seedfilen.
+Der er ingen browserdemo længere; `/auktion?demo=1` viser den almindelige side. Alle ruter bruger Supabase. Besøgende ser kun auktioner med status `live` (RLS-politikken `auction_read`). Kladder og auktioner i papirkurven ses kun af administratorer. `/forsidetest` henter de samme live auktioner direkte via REST med den publishable nøgle.
 
 ## 12. Mail og Resend
 
@@ -720,7 +693,7 @@ Ved uoverensstemmelser mellem beskrivelser er disse filer centrale:
 - **Budafgivelse, polling og CSV-eksport i browseren:** `src/auction.js`.
 - **OTP og tilmelding:** `src/event.js`.
 - **Eventadministration:** `src/event-admin.js`.
-- **Eksempelprofiler og lokal demo:** `src/demo.js`, `src/registration.js`, `src/front-test.js`.
+- **Forsidens auktioner:** `src/front.js`.
 - **Nedtælling:** `src/countdown.js` i den aktuelle arbejdskopi.
 - **Forventet lokal adfærd:** `tests/`.
 - **Supplerende procesbeskrivelse:** `docs/TILMELDING-OG-AUKTION.md`.

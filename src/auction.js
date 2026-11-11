@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { countdownShort, countdownBar, isOver } from './countdown.js';
-import { initialLots, demoHistory } from './demo.js';
 import { termsFor, keyTerms, stepsFor, faqFor } from './terms.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
 import { imageEditor, isProcessed } from './image-crop.js';
-import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setTestbar, setHeader, downloadCsv } from './ui.js';
+import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
 const path = location.pathname;
@@ -16,11 +15,9 @@ const participantPage = /^\/deltager\/?$/.test(path);
 if (path.startsWith('/administration')) history.replaceState(null, '', '/admin' + location.search + location.hash);
 
 const main = $('#main');
-const DEMO_KEY = 'lykke-auction-demo-v4';
 const STEP = 500;
 const MAX_BID = 10000000;
 
-let demo = new URLSearchParams(location.search).get('demo') === '1';
 let client;
 let user = null;
 let profile = null;
@@ -36,22 +33,7 @@ setupModal();
 
 // ---------- Data ----------
 
-function readDemo() {
-  try {
-    return JSON.parse(sessionStorage.getItem(DEMO_KEY)) || initialLots();
-  } catch {
-    return initialLots();
-  }
-}
-function saveDemo() {
-  sessionStorage.setItem(DEMO_KEY, JSON.stringify(lots));
-}
-
 async function loadIdentity() {
-  if (demo) {
-    isAdmin = adminPage;
-    return;
-  }
   const { data, error } = await client.auth.getUser();
   user = error ? null : data.user;
   profile = null;
@@ -70,7 +52,6 @@ async function loadIdentity() {
 }
 
 async function fetchLots() {
-  if (demo) return;
   const { data, error } = await client.from('auction_lots').select('*').order('created_at', { ascending: true });
   if (error) throw error;
   lots = data || [];
@@ -85,11 +66,9 @@ const duo = (lot) => (isProcessed(lot.image_url) ? ' is-duotone' : '');
 const minimum = (lot) => (lot.bid_count ? lot.current_bid + STEP : lot.starting_price);
 const firstName = (lot) => lot.name.split(' ')[0];
 // Charity products need an active profile; padel partners also need an individual tournament registration.
-const canBid = (lot) => demo || (profile?.approved === true && (lot.kind === 'item' || eventAccess));
+const canBid = (lot) => (profile?.approved === true && (lot.kind === 'item' || eventAccess));
 
 function safeImage(value) {
-  // Demo images made in the admin live in the browser as JPEG data.
-  if (demo && /^data:image\/jpeg;base64,[a-zA-Z0-9+/=]+$/.test(value || '')) return value;
   try {
     const url = new URL(value, location.origin);
     if (url.origin === location.origin && /^\/(images|auktioner)\//.test(url.pathname)) return url.href;
@@ -100,7 +79,7 @@ function safeImage(value) {
 }
 
 function link(id) {
-  return `/auktion${demo ? '?demo=1' : ''}${id ? '#spiller/' + encodeURIComponent(id) : ''}`;
+  return `/auktion${id ? '#spiller/' + encodeURIComponent(id) : ''}`;
 }
 
 function instagram(lot) {
@@ -340,7 +319,6 @@ function detail(id) {
           ${over ? '' : waiting ? `<div class="lp-notice">Du kan byde, når nedtællingen er slut.${canBid(lot) ? '' : ' Gør din profil klar allerede nu.'}</div>${canBid(lot) ? '' : bidAccessNotice(lot)}` : canBid(lot) ? bidForm(lot) : bidAccessNotice(lot)}
         </section>
         <section class="lp-history" id="bid-history" aria-label="Budhistorik" hidden></section>
-        ${demo ? '<div class="lp-notice">Demo: buddene er eksempler og gemmes kun i din browser.</div>' : '<p class="lp-help">Testversion. Der udsendes ingen betaling eller faktura fra testen.</p>'}
       </div>
     </div>
   </div>
@@ -376,7 +354,6 @@ function lotInfo(lot) {
         <div class="lp-info__block">
           <h2 class="lp-info__title">Vilkår</h2>
           <ul class="lp-terms">${termsFor(kind).map((t) => `<li>${t}</li>`).join('')}</ul>
-          <p class="lp-help">Testversion af vilkårene.</p>
         </div>
         <div class="lp-info__block">
           <h2 class="lp-info__title">Spørgsmål og svar</h2>
@@ -395,7 +372,6 @@ const bidTime = (value) => {
 };
 
 async function loadHistory(lot) {
-  if (demo) return demoHistory(lot);
   const { data, error } = await client.rpc('auction_bid_history', { p_lot: lot.id });
   // Before database/bid-history.sql is applied the function does not exist; then the section stays hidden.
   return error ? null : data;
@@ -457,13 +433,12 @@ function confirmBid(lot, amount) {
     return;
   }
   const request = crypto.randomUUID();
-  modal(`<p class="lp-eyebrow" style="color: var(--red-text)">${demo ? 'Demobud' : 'Bekræft dit bud'}</p>
+  modal(`<p class="lp-eyebrow" style="color: var(--red-text)">Bekræft dit bud</p>
     <h2 id="modal-title">${kindOf(lot) === 'item' ? `Byd på ${esc(lot.name)}?` : `Dig og ${esc(firstName(lot))}?`}</h2>
     <p class="lp-text">Du byder <strong>${money(amount)}</strong> ${kindOf(lot) === 'item' ? `på ${esc(lot.name)}` : `på at blive makker med ${esc(lot.name)}`}.</p>
     <ul class="lp-terms">${keyTerms.map((t) => `<li>${t}</li>`).join('')}</ul>
     <form id="confirm-form" class="lp-form" style="gap: 18px">
       <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer <a href="#vilkaar" id="confirm-terms-link">vilkårene for auktionen</a> og ved, at mit bud er bindende.</span></label>
-      ${demo ? '<p class="lp-help">Demo: buddet gemmes kun i din browser.</p>' : ''}
       <div class="lp-actions">
         <button class="lp-btn lp-btn--primary" type="submit">Bekræft ${money(amount)}</button>
         <button class="lp-btn lp-btn--secondary" type="button" id="confirm-cancel">Fortryd</button>
@@ -477,23 +452,15 @@ function confirmBid(lot, amount) {
   $('#confirm-cancel').onclick = closeModal;
   useForm($('#confirm-form'), async (form) => {
     if (!form.querySelector('[name=terms]').checked) throw new Error('Accepter vilkårene for at byde.');
-    if (demo) {
-      if (closed(lot) || amount < minimum(lot)) throw new Error('Auktionen er slut, eller buddet er blevet overbudt.');
-      lot.history = [{ amount, created_at: new Date().toISOString(), display_name: 'Demobudgiver', is_mine: true }, ...demoHistory(lot)];
-      lot.current_bid = amount;
-      lot.bid_count++;
-      saveDemo();
-    } else {
-      const { error } = await client.rpc('place_auction_bid', { p_lot: lot.id, p_amount: amount, p_request: request });
-      await fetchLots();
-      if (error) {
-        detail(lot.id);
-        throw error;
-      }
+    const { error } = await client.rpc('place_auction_bid', { p_lot: lot.id, p_amount: amount, p_request: request });
+    await fetchLots();
+    if (error) {
+      detail(lot.id);
+      throw error;
     }
     closeModal();
     detail(lot.id);
-    toast(`${demo ? 'Demobud' : 'Bud'} på ${money(amount)} er registreret.`);
+    toast(`Bud på ${money(amount)} er registreret.`);
   });
 }
 
@@ -547,7 +514,7 @@ const fail = (error) => toast(errorMessage(error));
 
 async function adminView() {
   document.title = 'Admin – Lykke Padel';
-  if (!demo && !isAdmin) {
+  if (!isAdmin) {
     main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty">
       <p class="lp-eyebrow" style="color: var(--red-text)">Kun for arrangører</p>
       <h1 class="lp-display lp-display--s" style="color: var(--ink)">Administration</h1>
@@ -559,7 +526,7 @@ async function adminView() {
   }
   const inTrash = trashed().length;
   const tabs = [
-    ...(demo ? [] : [['registrations', 'Tilmeldinger']]),
+    ['registrations', 'Tilmeldinger'],
     ['lots', 'Auktioner'],
     ['people', 'Budgivere'],
     ['winners', 'Vindere'],
@@ -570,10 +537,9 @@ async function adminView() {
       <h1 class="lp-display lp-display--s" style="color: var(--ink)">Administration</h1>
       <div class="lp-actions"><a class="lp-btn lp-btn--secondary" href="${link()}">Se auktionen</a><button class="lp-btn lp-btn--primary" type="button" id="new-lot">Ny auktion</button></div>
     </div>
-    <p class="lp-help">${demo ? 'Demo-administration. Ændringer gemmes kun i denne browser.' : 'Auktioner med bud kan ikke redigeres. Tider vises i dansk tid.'}</p>
+    <p class="lp-help">Auktioner med bud kan ikke redigeres. Tider vises i dansk tid.</p>
     <nav class="lp-tabs" aria-label="Administration">${tabs.map(([key, label]) => `<a href="#" data-tab="${key}" ${key === adminTab ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
     <div id="admin-body"></div>
-    ${demo ? '<p><button class="lp-btn--text" type="button" id="reset-demo">Nulstil demodata</button></p>' : ''}
   </div>`;
   $('#new-lot').onclick = () => editLot();
   main.querySelectorAll('[data-tab]').forEach((tab) => {
@@ -582,12 +548,6 @@ async function adminView() {
       adminTab = tab.dataset.tab;
       adminView();
     };
-  });
-  $('#reset-demo')?.addEventListener('click', () => {
-    lots = initialLots();
-    saveDemo();
-    adminView();
-    toast('Demodata er nulstillet.');
   });
   const body = $('#admin-body');
   if (adminTab === 'registrations') return eventAdminView(client, { refresh: adminView });
@@ -638,14 +598,9 @@ function askTrash(lot) {
 }
 
 async function setTrashed(lot, trash) {
-  if (demo) {
-    lot.status = trash ? 'trashed' : 'draft';
-    saveDemo();
-  } else {
-    const { error } = await client.rpc('trash_auction_lot', { p_id: lot.id, p_trash: trash });
-    if (error) throw needsSql(error);
-    await fetchLots();
-  }
+  const { error } = await client.rpc('trash_auction_lot', { p_id: lot.id, p_trash: trash });
+  if (error) throw needsSql(error);
+  await fetchLots();
   closeModal();
   await adminView();
   toast(trash ? `"${lot.name}" er lagt i papirkurven.` : `"${lot.name}" er gendannet som kladde.`);
@@ -688,20 +643,16 @@ function askDelete(list) {
     $('#delete-yes').disabled = true;
     try {
       for (const lot of list) {
-        if (demo) lots = lots.filter((l) => l.id !== lot.id);
-        else {
-          const { error } = await client.rpc('delete_auction_lot', { p_id: lot.id });
-          if (error) throw needsSql(error);
-          await removeImage(lot.image_url);
-        }
+        const { error } = await client.rpc('delete_auction_lot', { p_id: lot.id });
+        if (error) throw needsSql(error);
+        await removeImage(lot.image_url);
       }
-      if (demo) saveDemo();
-      else await fetchLots();
+      await fetchLots();
       closeModal();
       await adminView();
       toast(one ? `"${list[0].name}" er slettet.` : `${list.length} auktioner er slettet.`);
     } catch (error) {
-      if (!demo) await fetchLots().catch(() => {});
+      await fetchLots().catch(() => {});
       closeModal();
       await adminView();
       fail(error);
@@ -710,10 +661,6 @@ function askDelete(list) {
 }
 
 async function adminPeople(body) {
-  if (demo) {
-    body.innerHTML = '<div class="lp-empty"><p class="lp-text">Budgivere vises kun i den Supabase-tilsluttede version.</p></div>';
-    return;
-  }
   const { data: people, error } = await client.from('auction_profiles').select('*').order('created_at', { ascending: false });
   if (error) {
     body.innerHTML = errorHtml(error.message);
@@ -751,14 +698,10 @@ async function adminPeople(body) {
 }
 
 async function adminWinners(body) {
-  let winners = [];
-  if (!demo) {
-    const { data, error } = await client.rpc('auction_winners');
-    if (error) {
-      body.innerHTML = errorHtml(error.message);
-      return;
-    }
-    winners = data;
+  const { data: winners, error } = await client.rpc('auction_winners');
+  if (error) {
+    body.innerHTML = errorHtml(error.message);
+    return;
   }
   if (!winners.length) {
     body.innerHTML = '<div class="lp-empty"><p class="lp-text">Vindere vises her, når en auktion er afsluttet med mindst ét bud.</p></div>';
@@ -814,7 +757,7 @@ async function uploadImage(blob) {
 // Best effort: a leftover file only costs storage, so errors are ignored.
 async function removeImage(url) {
   const path = bucketPath(url);
-  if (path && !demo) await client.storage.from(BUCKET).remove([path]).catch(() => {});
+  if (path) await client.storage.from(BUCKET).remove([path]).catch(() => {});
 }
 
 const dateField = (id, name, value, extra = '') =>
@@ -907,7 +850,7 @@ function editLot(lot) {
     const typed = field(form, 'image');
     if (typed && !/^https:\/\//.test(typed)) throw new Error('Billedadressen skal starte med https://');
     let image = typed || lot?.image_url || '';
-    if (editor.changed) image = demo ? editor.dataUrl() : await uploadImage(await editor.blob());
+    if (editor.changed) image = await uploadImage(await editor.blob());
     if (!image) throw new Error('Vælg et billede til auktionen.');
 
     const values = {
@@ -923,46 +866,24 @@ function editLot(lot) {
       p_kind: field(form, 'kind'),
       p_value: field(form, 'value') || null,
     };
-    if (demo) {
-      const next = {
-        ...lot,
-        id: lot?.id || crypto.randomUUID(),
-        name: values.p_name,
-        category: values.p_category,
-        description: values.p_description,
-        image_url: image,
-        starts_at: starts,
-        ends_at: ends,
-        starting_price: start,
-        status: values.p_status,
-        kind: values.p_kind,
-        value_text: values.p_value,
-        current_bid: 0,
-        bid_count: 0,
-      };
-      if (lot) lots[lots.findIndex((l) => l.id === lot.id)] = next;
-      else lots.push(next);
-      saveDemo();
-    } else {
-      let { error } = await client.rpc('save_auction_lot', values);
-      // Older databases: without auction-admin-tools.sql there is no start time, without auction-items.sql no kind.
+    let { error } = await client.rpc('save_auction_lot', values);
+    // Older databases: without auction-admin-tools.sql there is no start time, without auction-items.sql no kind.
+    if (error && missingFunction(error)) {
+      if (starts) throw new Error('Starttid kræver, at database/auction-admin-tools.sql er kørt i Supabase.');
+      const { p_starts, ...v2 } = values;
+      ({ error } = await client.rpc('save_auction_lot', v2));
       if (error && missingFunction(error)) {
-        if (starts) throw new Error('Starttid kræver, at database/auction-admin-tools.sql er kørt i Supabase.');
-        const { p_starts, ...v2 } = values;
-        ({ error } = await client.rpc('save_auction_lot', v2));
-        if (error && missingFunction(error)) {
-          const { p_kind, p_value, ...old } = v2;
-          if (p_kind === 'item') throw new Error('Charity-produkter kræver, at database/auction-items.sql er kørt i Supabase.');
-          ({ error } = await client.rpc('save_auction_lot', old));
-        }
+        const { p_kind, p_value, ...old } = v2;
+        if (p_kind === 'item') throw new Error('Charity-produkter kræver, at database/auction-items.sql er kørt i Supabase.');
+        ({ error } = await client.rpc('save_auction_lot', old));
       }
-      if (error) {
-        if (editor.changed) await removeImage(image);
-        throw error;
-      }
-      if (lot && lot.image_url !== image) await removeImage(lot.image_url);
-      await fetchLots();
     }
+    if (error) {
+      if (editor.changed) await removeImage(image);
+      throw error;
+    }
+    if (lot && lot.image_url !== image) await removeImage(lot.image_url);
+    await fetchLots();
     closeModal();
     await adminView();
     toast('Auktionen er gemt.');
@@ -980,10 +901,8 @@ async function render() {
 }
 
 async function refresh() {
-  if (!demo) {
-    await loadIdentity();
-    await fetchLots();
-  }
+  await loadIdentity();
+  await fetchLots();
   await render();
 }
 
@@ -1008,7 +927,7 @@ setInterval(() => {
 
 // Poll for new bids every 10 seconds while the tab is visible.
 setInterval(async () => {
-  if (demo || !client || document.hidden || polling || $('#modal').open || adminPage || registrationPage || participantPage) return;
+  if (!client || document.hidden || polling || $('#modal').open || adminPage || registrationPage || participantPage) return;
   if (document.activeElement?.id === 'amount') return;
   polling = true;
   try {
@@ -1022,17 +941,8 @@ setInterval(async () => {
   }
 }, 10000);
 
-function startDemo() {
-  demo = true;
-  setTestbar('Demo · eksempler på auktioner og bud · ingen betaling');
-  lots = readDemo();
-  return render();
-}
-
 async function start() {
-  if (demo && !registrationPage && !participantPage) return startDemo();
   const response = await fetch('/api/auction-config?context=' + (adminPage ? 'admin' : 'participant'));
-  if (response.status === 404 && !adminPage && !registrationPage && !participantPage) return startDemo();
   if (!response.ok) {
     main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty"><h1 class="lp-display lp-display--s">${registrationPage ? 'Tilmeldingen er ikke åben endnu' : 'Siden er ikke åben endnu'}</h1><p class="lp-text">Vi gør klar. Kig forbi igen senere.</p><a class="lp-btn lp-btn--primary" href="/forsidetest">Til forsiden</a></div></div>`;
     setHeader();
@@ -1041,7 +951,6 @@ async function start() {
   const config = await response.json();
   client = createClient(config.url, config.key);
   if (registrationPage || participantPage) {
-    setTestbar('Testtilmelding · ingen kortbetaling · data gemmes hos LykkeLiga');
     await mountEvent(client, { participant: participantPage });
     return;
   }
@@ -1052,7 +961,6 @@ async function start() {
       toast('Google-login kunne ikke gennemføres. Prøv igen eller kontakt arrangøren.');
     }
   }
-  setTestbar('Testmiljø · eksempelprofiler · ingen betaling eller fakturering');
   await client.auth.getSession();
   await refresh();
 }

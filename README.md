@@ -40,13 +40,12 @@ GitHub-repo: https://github.com/espensen-mik/lykkepadel
 Installér projektets pakker med `npm ci` (Node.js 22 eller nyere). `npm run dev` bygger siderne og starter serveren. Efter ændring af kildefiler bygges igen med `npm run build`, og browseren genindlæses.
 
 - `/` er uændret og har ingen links til auktionen.
-- `/auktion` er Supabase-tilsluttet testversion med login, profil og manuel godkendelse af budgivere.
+- `/auktion` viser de auktioner, der er sat til Live i admin, med login og budprofil.
 - `/admin` bruger Google-login med præcis @lykkeliga.dk-domænekontrol og en eksplicit administratorrolle/allowlist.
-- `/auktion?demo=1` og `/admin?demo=1` er design-/funktionstest, der også kan bruges på live-sitet. De bruger tre navngivne eksempelprofiler med lokale portrætter og sessionStorage, aldrig rigtige bud eller databaseændringer. Luk browserens session eller brug Nulstil testdata for at nulstille.
 
-Den lokale `.env.local` har `AUCTIONS_ENABLED=true` til test. På Vercel viser `/auktion` automatisk den tydeligt markerede browserdemo, når både event- og auktionsforbindelsen er deaktiveret (konfigurations-API svarer 404). `/admin` giver ikke administratoradgang via denne fallback. Demo-administration findes kun med `?demo=1` og arbejder udelukkende med browserens testdata. Ved senere Supabase-test angives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` og `AUCTIONS_ENABLED=true` i miljøvariabler og der laves ny deployment. API-nøglen i konfigurationen er kun publishable. Databasens RLS og administratorfunktioner er de egentlige adgangsregler, også hvis nogen kender API-adressen.
+Den lokale `.env.local` har `AUCTIONS_ENABLED=true` til test. Der er ingen demo-tilstand. Svarer konfigurations-API’et 404, viser `/auktion` en besked om, at siden ikke er åben endnu. Ved senere Supabase-test angives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` og `AUCTIONS_ENABLED=true` i miljøvariabler og der laves ny deployment. API-nøglen i konfigurationen er kun publishable. Databasens RLS og administratorfunktioner er de egentlige adgangsregler, også hvis nogen kender API-adressen.
 
-Google-opsætning og første administrator: se `database/GOOGLE-ADMIN.md`. Den seneste SQL-opdatering er `auction-google-domain-login.sql`; den giver den verificerede Google-konto mikael@lykkeliga.dk administratoradgang efter første login. De tidligere Google-admin-filer er historik og skal ikke genkøres. `ADMIN_AUTH_ENABLED=true` aktiverer den rigtige adminforbindelse uden at skifte den offentlige auktion væk fra browserdemo. De fiktive eksempelauktioner ligger som kladder, indtil admin publicerer dem; auktioner med bud låses for redigering. Billeder indsættes som HTTPS-URL'er; upload kan tilføjes senere.
+Google-opsætning og første administrator: se `database/GOOGLE-ADMIN.md`. Den seneste SQL-opdatering er `auction-google-domain-login.sql`; den giver den verificerede Google-konto mikael@lykkeliga.dk administratoradgang efter første login. De tidligere Google-admin-filer er historik og skal ikke genkøres. `ADMIN_AUTH_ENABLED=true` aktiverer adminforbindelsen alene. Kladder og auktioner i papirkurven ses kun i admin; auktioner med bud låses for redigering. Billeder uploades i admin (se `database/README.md`).
 
 Budmotoren bruger databaselås, servertid og idempotente forespørgsler. Bud i danske kroner skal være i trin på 500 kr., og mindst 500 kr. over det aktuelle bud. Første bud skal være mindst startprisen. Visningen opdaterer bud automatisk hvert 10. sekund; serveren kontrollerer altid det aktuelle beløb ved afgivelse. Der er ingen automatisk forlængelse ved sene bud i denne version.
 
@@ -66,6 +65,6 @@ Læs hele forløbet, databasereglerne og afgrænsningen af testen i [procesbeskr
 
 ## Kommende forside
 
-`/forsidetest` er en separat, noindex-markeret forhåndsvisning med eventbeskrivelse, deltagelsespriser, tilmelding og tre udvalgte makkerauktioner. Den nuværende `/`-forside ændres ikke. Siden viser de tre kuraterede eksempelprofiler Emil Lilleøre, Emil Okkels og Stig Tøfting med lokale portrætter, Instagram-links og links til browserdemoen. Ingen data publiceres i Supabase. Kilder findes i `docs/MAKKERE-KILDER.md`. Linket til hele auktionen peger fortsat på `/auktion`.
+`/forsidetest` er en separat, noindex-markeret forhåndsvisning med eventbeskrivelse, deltagelsespriser, tilmelding og auktioner. Den nuværende `/`-forside ændres ikke. Auktionssektionen henter op til seks auktioner med status Live fra Supabase (`src/front.js`). Er der ingen, står der, at auktionerne åbner snart.
 
 Tilmeldingsknapperne for de to kategorier forvælger henholdsvis `?type=individual` og `?type=pair`. Supabase er stadig autoritativ for kategori, pris, rabat og budadgang.
