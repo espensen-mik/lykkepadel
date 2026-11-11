@@ -107,6 +107,17 @@ Før kørslen virker admin som før. Starttid, papirkurv og upload giver en besk
 
 `node --test tests/auction-admin-tools.test.mjs` tester starttid, papirkurv, sletning og bucket-adgang.
 
+## Admin: slet annullerede deltagere og budgivere
+
+Kør `delete-people.sql` én gang efter `auction-items.sql`. Den tilføjer to funktioner, som kun administratorer kan kalde:
+
+- `delete_event_registration(id)` sletter en tilmelding, der er annulleret. Bekræftede tilmeldinger skal annulleres først. Personens budprofil bliver liggende.
+- `delete_auction_bidder(user_id)` sletter en budprofil. Budgivere, der har budt, kan ikke slettes, så budhistorik og fakturagrundlag bevares. Bloker dem i stedet. Budgivere med en bekræftet tilmelding skal have tilmeldingen annulleret først.
+
+Login-kontoen i Supabase Auth slettes ikke, så personen kan oprette en ny profil senere. Begge sletninger skrives i audit-loggen.
+
+`node --test tests/delete-people.test.mjs` tester reglerne.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.

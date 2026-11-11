@@ -56,7 +56,7 @@ export async function eventAdminView(client, { refresh }) {
         <td class="num">${money(r.amount_due)}<br><span class="lp-help">${money(r.discount_amount)} rabat</span></td>
         <td>${r.status === 'confirmed' ? '<span class="lp-pill lp-pill--lead">Bekræftet</span>' : '<span class="lp-pill lp-pill--quiet">Annulleret</span>'}</td>
         <td>${new Date(r.created_at).toLocaleDateString('da-DK')}</td>
-        <td>${r.status === 'confirmed' ? `<button class="lp-btn--text" type="button" data-cancel="${esc(r.id)}">Annuller</button>` : ''}</td>
+        <td>${r.status === 'confirmed' ? `<button class="lp-btn--text" type="button" data-cancel="${esc(r.id)}">Annuller</button>` : `<button class="lp-btn--text" type="button" data-delete-registration="${esc(r.id)}">Slet</button>`}</td>
       </tr>`,
         )
         .join('')}</tbody></table></div>`
@@ -90,6 +90,24 @@ export async function eventAdminView(client, { refresh }) {
         closeModal();
         await refresh();
         toast('Tilmeldingen er annulleret.');
+      });
+    };
+  });
+
+  body.querySelectorAll('[data-delete-registration]').forEach((button) => {
+    button.onclick = () => {
+      const r = rows.find((row) => row.id === button.dataset.deleteRegistration);
+      modal(`<h2 id="modal-title">Slet tilmelding?</h2>
+        <p class="lp-text">${esc(r.full_name)}${r.partner_name ? ` & ${esc(r.partner_name)}` : ''} · annulleret</p>
+        <p class="lp-help">Tilmeldingen fjernes for altid fra oversigten. Personens budprofil og login påvirkes ikke.</p>
+        <form id="delete-registration-form" class="lp-actions"><button class="lp-btn lp-btn--primary" type="submit">Slet tilmelding</button><button class="lp-btn lp-btn--secondary" type="button" id="delete-registration-keep">Behold</button></form>`);
+      $('#delete-registration-keep').onclick = closeModal;
+      useForm($('#delete-registration-form'), async () => {
+        const { error: deleteError } = await client.rpc('delete_event_registration', { p_id: r.id });
+        if (deleteError) throw /PGRST202|could not find/i.test(`${deleteError.code} ${deleteError.message}`) ? new Error('Kør database/delete-people.sql i Supabase først.') : deleteError;
+        closeModal();
+        await refresh();
+        toast('Tilmeldingen er slettet.');
       });
     };
   });
