@@ -260,7 +260,7 @@ function review() {
   content.innerHTML = `<div class="lp-split">
     <form id="event-confirm" class="lp-form" style="flex: 999 1 520px">
       <dl class="lp-summary" style="border-top: 2px solid var(--ink)">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd style="text-align: right; white-space: pre-line">${v}</dd></div>`).join('')}</dl>
-      <label class="lp-check"><input name="confirm" type="checkbox" required><span>Jeg bekræfter min tilmelding${quote.amount_due ? ` og accepterer, at deltagelsen faktureres med ${money(quote.amount_due)}` : ''}. Oplysningerne gemmes hos LykkeLiga og bruges til deltagelse, fakturering og auktionsadgang.</span></label>
+      <label class="lp-check"><input name="confirm" type="checkbox" required><span>Jeg bekræfter min tilmelding${quote.amount_due ? ` og accepterer, at deltagelsen faktureres med ${money(quote.amount_due)} med betaling inden 10 dage` : ''}. Jeg accepterer <a href="/handelsbetingelser#turnering" target="_blank">handelsbetingelserne</a>, herunder at tilmeldingen ikke refunderes, men at jeg må sende en anden spiller. Oplysningerne gemmes hos LykkeLiga og bruges til deltagelse, fakturering og auktionsadgang.</span></label>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">${currentUser ? 'Bekræft tilmelding' : 'Send kode til min mail'}</button></div>
     </form>
     ${summary(
