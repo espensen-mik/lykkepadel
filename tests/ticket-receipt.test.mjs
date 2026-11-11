@@ -6,7 +6,7 @@ import { ticketMail } from '../src/ticket-receipt.js';
 const ID = '11111111-1111-4111-8111-111111111111';
 const TOKEN = 'a'.repeat(64);
 const order = {
-  id: ID, status: 'paid', is_test: false, quantity: 2, unit_price: 200, amount: 400, receipt: 'LP-2027-0001', paid_at: '2027-03-01T10:00:00Z',
+  id: ID, status: 'paid', is_test: false, quantity: 2, unit_price: 200, amount: 400, receipt: 'LP-2027-0001', order_no: 'LP00001', paid_at: '2027-03-01T10:00:00Z',
   buyer_name: 'Anna <i>Hansen</i>', email: 'anna@example.test', company_name: 'Firma ApS', company_cvr: '12345678', company_address: 'Vej 1, 8000 Aarhus',
   tickets: [{ code: 'AB12-CD34' }, { code: 'EF56-7890' }],
 };
@@ -46,6 +46,8 @@ test('the mail has the ticket link, codes and a receipt with seller, buyer and n
   assert.match(mail.html, /CVR 12345678/);
   assert.match(mail.html, /2 × billet til Charity Showkamp à 200 kr\./);
   assert.match(mail.text, /ikke momsregistreret/);
+  assert.match(mail.html, /Ordre: LP00001/);
+  assert.match(mail.text, /Ordre: LP00001/);
   assert.match(mail.html, /Anna &lt;i&gt;Hansen/);
   assert.match(ticketMail({ ...order, is_test: true }, 'x').subject, /^\[TEST\]/);
 });

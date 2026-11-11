@@ -60,7 +60,7 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
       <tbody>${rows
         .map(
           (o) => `<tr>
-        <td><strong>${receiptNo(o)}</strong>${o.is_test ? '<br><span class="lp-pill lp-pill--quiet">Test</span>' : ''}</td>
+        <td><strong>${receiptNo(o)}</strong>${o.order_no ? `<br><span class="lp-help">Ordre ${esc(o.order_no)}</span>` : ''}${o.is_test ? '<br><span class="lp-pill lp-pill--quiet">Test</span>' : ''}</td>
         <td><strong>${esc(o.buyer_name)}</strong><br>${esc(o.email)}${o.phone ? `<br>${esc(o.phone)}` : ''}${o.company_name ? `<br><span class="lp-help">${esc(o.company_name)} · CVR ${esc(o.company_cvr)}</span>` : ''}</td>
         <td class="num">${o.quantity}${o.status === 'paid' ? `<br><span class="lp-help">${o.tickets.filter((t) => t.checked_in_at).length} tjekket ind</span>` : ''}</td>
         <td class="num">${money(o.amount)}</td>
@@ -96,8 +96,8 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
   }
 
   $('#export-tickets')?.addEventListener('click', () => {
-    const header = ['Kvittering', 'Status', 'Test', 'Købt', 'Betalt', 'Navn', 'Mail', 'Telefon', 'Firma', 'CVR', 'Firmaadresse', 'Antal', 'Stykpris', 'Beløb', 'Billetkoder', 'Tjekket ind'];
-    downloadCsv('lykke-padel-billetter.csv', header, rows.map((o) => [receiptNo(o), STATUS[o.status], o.is_test ? 'Ja' : 'Nej', time(o.created_at), o.paid_at ? time(o.paid_at) : '', o.buyer_name, o.email, o.phone, o.company_name, o.company_cvr, o.company_address, o.quantity, o.unit_price, o.amount, o.tickets.map((t) => t.code).join(' '), o.tickets.filter((t) => t.checked_in_at).length]));
+    const header = ['Kvittering', 'Ordre', 'Status', 'Test', 'Købt', 'Betalt', 'Navn', 'Mail', 'Telefon', 'Firma', 'CVR', 'Firmaadresse', 'Antal', 'Stykpris', 'Beløb', 'Billetkoder', 'Tjekket ind'];
+    downloadCsv('lykke-padel-billetter.csv', header, rows.map((o) => [receiptNo(o), o.order_no || '', STATUS[o.status], o.is_test ? 'Ja' : 'Nej', time(o.created_at), o.paid_at ? time(o.paid_at) : '', o.buyer_name, o.email, o.phone, o.company_name, o.company_cvr, o.company_address, o.quantity, o.unit_price, o.amount, o.tickets.map((t) => t.code).join(' '), o.tickets.filter((t) => t.checked_in_at).length]));
   });
 
   body.querySelectorAll('[data-receipt]').forEach((button) => {

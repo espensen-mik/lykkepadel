@@ -14,7 +14,7 @@ create table auth.users(id uuid primary key,email text,email_confirmed_at timest
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
 for (const id of [admin, other]) await db.query('insert into auth.users values($1,$2,now(),false)', [id, `${id.slice(-2)}@example.test`]);
-for (const file of ['auction-setup.sql', 'tickets.sql']) await db.exec(await readFile(new URL(`../database/${file}`, import.meta.url), 'utf8'));
+for (const file of ['auction-setup.sql', 'tickets.sql', 'ticket-order-numbers.sql']) await db.exec(await readFile(new URL(`../database/${file}`, import.meta.url), 'utf8'));
 await db.query('insert into auction_private.admins values($1)', [admin]);
 
 async function as(user, fn) {
@@ -129,4 +129,16 @@ test('the admin can fetch the token to resend a receipt; others cannot', async (
   const o = await order(1, { email: 'token@example.test' });
   assert.equal(await as(admin, () => one('select public.admin_ticket_token($1)', [o.id])), o.token);
   await assert.rejects(as(other, () => db.query('select public.admin_ticket_token($1)', [o.id])), /Kun administratorer/);
+});
+
+test('every order gets a QuickPay-ready order number, with its own series for tests', async () => {
+  const rows = (await db.query('select order_no, is_test from public.ticket_orders order by order_no')).rows;
+  assert.ok(rows.length > 5);
+  assert.equal(new Set(rows.map((r) => r.order_no)).size, rows.length);
+  for (const r of rows) {
+    assert.match(r.order_no, r.is_test ? /^LPT\d{5}$/ : /^LP\d{5}$/);
+    assert.ok(r.order_no.length >= 4 && r.order_no.length <= 20);
+  }
+  const o = await order(1, { email: 'number@example.test' });
+  assert.match((await view(o)).order_no, /^LPT\d{5}$/);
 });
