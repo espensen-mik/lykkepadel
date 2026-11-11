@@ -5,6 +5,7 @@ import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
 import { imageEditor, isProcessed } from './image-crop.js';
 import { winnerMail } from './winner-mail.js';
+import { ticketAdminView } from './ticket-admin.js';
 import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, rememberAdmin, paymentChecks, bindPaymentChecks, yesDate, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
@@ -519,8 +520,18 @@ const missingFunction = (error) => /PGRST202|could not find/i.test(`${error?.cod
 const needsSql = (error) => (missingFunction(error) ? new Error('Kør database/auction-admin-tools.sql i Supabase først.') : error);
 const fail = (error) => toast(errorMessage(error));
 
+// A scanned ticket opens /admin#billet/<code>: show the tickets tab and check it in once.
+let scannedTicket = null;
+function readScannedTicket() {
+  if (!adminPage || !location.hash.startsWith('#billet/')) return;
+  scannedTicket = decodeURIComponent(location.hash.slice(8)).toUpperCase();
+  adminTab = 'tickets';
+}
+readScannedTicket();
+
 async function adminView() {
   document.title = 'Admin – Lykke Padel';
+  readScannedTicket();
   if (!isAdmin) {
     main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty">
       <p class="lp-eyebrow" style="color: var(--red-text)">Kun for arrangører</p>
@@ -534,6 +545,7 @@ async function adminView() {
   const inTrash = trashed().length;
   const tabs = [
     ['registrations', 'Tilmeldinger'],
+    ['tickets', 'Billetter'],
     ['lots', 'Auktioner'],
     ['people', 'Budgivere'],
     ['winners', 'Vindere'],
@@ -558,6 +570,12 @@ async function adminView() {
   });
   const body = $('#admin-body');
   if (adminTab === 'registrations') return eventAdminView(client, { refresh: adminView });
+  if (adminTab === 'tickets') {
+    const code = scannedTicket;
+    scannedTicket = null;
+    if (code) history.replaceState(null, '', '/admin');
+    return ticketAdminView(client, body, { refresh: adminView, code });
+  }
   if (adminTab === 'lots') return adminLots(body);
   if (adminTab === 'people') return adminPeople(body);
   if (adminTab === 'winners') return adminWinners(body);
