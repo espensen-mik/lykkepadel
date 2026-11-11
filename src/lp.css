@@ -704,3 +704,9 @@ select.lp-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http:/
 .lp-legal p, .lp-legal li { margin: 0; font: 400 16px/1.65 var(--font-body); }
 .lp-legal ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
 .lp-legal a { color: var(--red-text); }
+.lp-ticket__brand, .lp-ticket__sponsors { background: var(--brown); border-radius: 10px; display: flex; align-items: center; }
+.lp-ticket__brand { padding: 14px 16px; }
+.lp-ticket__brand img { display: block; width: 100%; max-width: 220px; height: auto; }
+.lp-ticket__sponsors { gap: 8px; padding: 12px 16px; flex-wrap: wrap; color: var(--sand); font: 700 10px/1.2 var(--font-body); letter-spacing: 1px; text-transform: uppercase; }
+.lp-ticket__sponsors img { height: 26px; width: auto; margin-right: 10px; }
+@media print { .lp-ticket__brand, .lp-ticket__sponsors { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

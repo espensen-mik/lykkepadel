@@ -1,4 +1,5 @@
 // Seller, event and receipt text for tickets. Used by the ticket page and the receipt mail.
+import { mailHeader, mailFooter } from './mail-layout.js';
 
 export const SELLER = {
   name: 'LykkeLiga',
@@ -43,7 +44,7 @@ export function ticketMail(order, link) {
 <body style="margin:0;padding:0;background:#f3ead2">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3ead2"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fffce0;border-radius:12px;overflow:hidden">
-<tr><td style="background:#2b1513;padding:24px 32px;font:bold 22px/1.2 Arial,Helvetica,sans-serif;letter-spacing:1px;color:#fffce0">LYKKE PADEL</td></tr>
+${mailHeader}
 <tr><td style="padding:32px">
 <p style="margin:0 0 8px;font:bold 13px/1.4 Arial,Helvetica,sans-serif;letter-spacing:1px;text-transform:uppercase;color:#c42a1c">${esc(EVENT.name)}</p>
 <h1 style="margin:0 0 24px;font:bold 28px/1.2 Arial,Helvetica,sans-serif;color:#2b1513">${test ? 'Testkøb: ' : ''}Tak for dit køb</h1>
@@ -62,7 +63,7 @@ ${p(`Vis billetterne på din telefon ved indgangen. Hver billet har sin egen QR-
 </table>
 <p style="margin:24px 0 0;font:15px/1.55 Arial,Helvetica,sans-serif;color:#3a1c18">Spørgsmål? Svar på denne mail eller skriv til ${esc(SELLER.email)}.</p>
 </td></tr>
-<tr><td style="padding:20px 32px;border-top:1px solid #e9dcc4;font:13px/1.5 Arial,Helvetica,sans-serif;color:#6b4a44">Lykke Padel · ${EVENT.date} · ${esc(EVENT.place)}<br>Arrangeret af LykkeLiga, powered by NORMAL</td></tr>
+${mailFooter(`Lykke Padel · ${EVENT.date} · ${esc(EVENT.place)}`)}
 </table></td></tr></table></body></html>`;
   return { subject, html, text };
 }

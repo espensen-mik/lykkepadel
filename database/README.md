@@ -156,6 +156,12 @@ Kvitteringsmailen sendes af `/api/ticket-receipt` gennem Resend én gang pr. ord
 
 `node --test tests/tickets.test.mjs tests/ticket-receipt.test.mjs` tester billetsalget og mailen.
 
+## Admin: ret deltageroplysninger
+
+Kør `admin-edit-registration.sql` én gang efter `registration-details.sql`. Den tilføjer `admin_update_registration(...)`, som kun administratorer kan kalde. Den retter navn, telefon, faktureringsadresse, makkers navn, T-shirt-størrelser, virksomheder og samtykke på en tilmelding. Navn, telefon og adresse opdateres også på personens budprofil. Mailen (login) og deltagelsestypen (pris) kan ikke ændres. Ændringen skrives i audit-loggen.
+
+`node --test tests/admin-edit-registration.test.mjs` tester funktionen.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.

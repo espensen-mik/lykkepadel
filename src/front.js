@@ -1,10 +1,19 @@
-import { countdownBar, isOver } from './countdown.js';
+import { countdownBar, countdownShort, isOver } from './countdown.js';
 import { isProcessed } from './image-crop.js';
 
 // The test front page: the countdown to the event and the live auctions.
 function tick() {
   document.querySelectorAll('[data-countdown="bar"]').forEach((el) => (el.innerHTML = countdownBar(el.dataset.ends)));
+  document.querySelectorAll('[data-lot-time]').forEach((el) => (el.innerHTML = lotTime(el.dataset.starts, el.dataset.ends)));
 }
+
+// "Starter om", "Slutter om" or "Slut", counted down every second.
+function lotTime(starts, ends) {
+  if (isOver(ends)) return 'Auktionen<br>er slut';
+  if (starts && !isOver(starts)) return `Starter om<br><strong>${countdownShort(starts)}</strong>`;
+  return `Slutter om<br><strong>${countdownShort(ends)}</strong>`;
+}
+const kr = (value) => `${new Intl.NumberFormat('da-DK').format(value)} kr.`;
 tick();
 setInterval(tick, 1000);
 
@@ -21,6 +30,13 @@ function image(value) {
 const card = (lot) => `<a class="lp-player" href="/auktion#spiller/${encodeURIComponent(lot.id)}">
   <div class="lp-lot__media"><img src="${esc(image(lot.image_url))}" alt="${esc(lot.name)}" loading="lazy"${isProcessed(lot.image_url) ? ' class="is-duotone"' : ''}><p class="lp-lot__tag">${esc(lot.category)}</p></div>
   <h3 class="lp-lot__name">${esc(lot.name)}</h3>
+  <div class="lp-lot__bid">
+    <div>
+      <p class="lp-lot__meta">${lot.bid_count ? `Nuværende bud · ${lot.bid_count} bud` : 'Startbud'}</p>
+      <p class="lp-lot__amount">${kr(lot.bid_count ? lot.current_bid : lot.starting_price)}</p>
+    </div>
+    <p class="lp-lot__ends" data-lot-time data-starts="${esc(lot.starts_at || '')}" data-ends="${esc(lot.ends_at)}">${lotTime(lot.starts_at, lot.ends_at)}</p>
+  </div>
 </a>`;
 
 // Only live auctions are shown. Open ones come first; without a connection the section says they open soon.
@@ -34,7 +50,7 @@ async function showLots() {
     if (response.ok) {
       const { url, key } = await response.json();
       const rest = new URL('/rest/v1/auction_lots', url);
-      rest.search = 'select=id,name,category,image_url,ends_at,created_at&status=eq.live&order=created_at.asc';
+      rest.search = 'select=*&status=eq.live&order=created_at.asc';
       const result = await fetch(rest, { headers: { apikey: key } });
       if (result.ok) lots = await result.json();
     }

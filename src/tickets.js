@@ -211,6 +211,7 @@ async function showOrder() {
   const tickets = order.tickets
     .map(
       (t, i) => `<article class="lp-ticket ${t.status === 'void' ? 'is-void' : ''}" aria-label="Billet ${i + 1} af ${order.tickets.length}">
+      <div class="lp-ticket__brand"><img src="/images/brand/lykkepadel-wide-creme.svg" alt="Lykke Padel" width="288" height="30"></div>
       <div class="lp-ticket__qr">${qrSvg(ticketUrl(t.code), { label: `QR-kode til billet ${t.code}` })}</div>
       <div class="lp-ticket__info">
         <p class="lp-eyebrow">${t.is_test ? 'Testbillet · giver ikke adgang' : `Billet ${i + 1} af ${order.tickets.length}`}</p>
@@ -218,6 +219,7 @@ async function showOrder() {
         <p class="lp-ticket__code">${esc(t.code)}</p>
         <p class="lp-help">${t.status === 'void' ? 'Annulleret' : t.checked_in_at ? 'Brugt ved indgangen' : '1 person · gyldig én gang'}</p>
       </div>
+      <div class="lp-ticket__sponsors"><span>Arrangeret af</span><img src="/images/brand/lykkeliga-creme.svg" alt="LykkeLiga"><span>Powered by</span><img src="/images/brand/normal-creme.svg" alt="NORMAL"></div>
     </article>`,
     )
     .join('');
