@@ -131,6 +131,16 @@ Selve fakturaerne laves fortsat i jeres regnskabsprogram. Før kørslen kan tilm
 
 `node --test tests/invoice-payments.test.mjs` tester reglerne.
 
+## Vindermails
+
+Kør `winner-mails.sql` én gang efter `invoice-payments.sql`. Den gemmer, hvornår og til hvilken mail hver vinder har fået en vindermail, og viser det i vinderlisten. Den tilføjer `mark_auction_winner_mail(lot, mail)`, som kun administratorer kan kalde, og kun med vinderens egen mail.
+
+Mailen sendes af `/api/winner-mails` gennem Resend fra `padel@forms.lykkeliga.dk` med svar til signe@lykkeliga.dk. Funktionen kræver `RESEND_API_KEY` i Vercel. Den bruger administratorens egen Supabase-session, så der skal ikke ligge en service-nøgle i Vercel. Teksten findes i `src/winner-mail.js`.
+
+I admin under Vindere kan man se hver mail, sende en testmail til sig selv, sende til én vinder eller sende alle, der ikke har fået en mail.
+
+`node --test tests/winner-mails-db.test.mjs tests/winner-mails.test.mjs` tester databasen, mailen og afsendelsen.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.

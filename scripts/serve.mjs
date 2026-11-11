@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { parseEnv } from 'node:util';
 import configHandler from '../api/auction-config.mjs';
+import winnerMailsHandler from '../api/winner-mails.mjs';
 if(!process.argv[2]) await import('./build.mjs');
 try {
  const local=parseEnv(await readFile(new URL('../.env.local',import.meta.url),'utf8'));
@@ -14,6 +15,7 @@ createServer(async(req,res)=>{
  try{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/api/auction-config'){configHandler(req,res);return;}
+  if(pathname==='/api/winner-mails'){await winnerMailsHandler(req,res);return;}
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
   const pages=['auktion','deltager','tilmelding','admin','administration','forsidetest','charity-turnering','charity-showkamp','om-lykkeliga'];
   const moved={'/om-dagen':'/forsidetest#program','/sagen':'/om-lykkeliga'};
