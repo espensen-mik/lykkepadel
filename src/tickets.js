@@ -232,7 +232,7 @@ async function showOrder() {
     <div class="lp-receipt__grid">
       <div><p class="lp-lot__meta">Sælger</p><p>${SELLER.name}<br>${SELLER.address}<br>CVR ${SELLER.cvr}<br>${SELLER.email}</p></div>
       <div><p class="lp-lot__meta">Køber</p><p>${esc(order.buyer_name)}<br>${esc(order.email)}${order.company_name ? `<br>${esc(order.company_name)}<br>CVR ${esc(order.company_cvr)}<br><span style="white-space: pre-line">${esc(order.company_address)}</span>` : ''}</p></div>
-      <div><p class="lp-lot__meta">Kvittering</p><p>Nr. ${esc(order.receipt)}<br>${date(order.paid_at)}<br>${order.is_test ? 'Testbetaling – intet beløb trukket' : 'Betalt med kort/MobilePay'}</p></div>
+      <div><p class="lp-lot__meta">Kvittering</p><p>Nr. ${esc(order.receipt)}${order.order_no ? `<br>Ordre ${esc(order.order_no)}` : ''}<br>${date(order.paid_at)}<br>${order.is_test ? 'Testbetaling – intet beløb trukket' : 'Betalt med kort/MobilePay'}</p></div>
     </div>
     <dl class="lp-summary">
       <div><dt>${order.quantity} × billet til ${EVENT.name} à ${kr(order.unit_price)}</dt><dd>${kr(order.amount)}</dd></div>

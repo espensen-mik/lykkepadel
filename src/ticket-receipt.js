@@ -33,7 +33,7 @@ export function ticketMail(order, link) {
     ...(test ? ['Dette er et testkøb. Der er ikke trukket penge, og billetterne giver ikke adgang.'] : []),
     `Se og vis dine billetter her:\n${link}`,
     `Billetkoder: ${codes.join(', ')}`,
-    `KVITTERING ${order.receipt}\nDato: ${day(order.paid_at)}\n\nSælger:\n${seller.join('\n')}\n\nKøber:\n${buyer.join('\n')}\n\n${line}: ${kr(order.amount)}\nI alt: ${kr(order.amount)}\n${payment}\n${receiptNote}`,
+    `KVITTERING ${order.receipt}${order.order_no ? `\nOrdre: ${order.order_no}` : ''}\nDato: ${day(order.paid_at)}\n\nSælger:\n${seller.join('\n')}\n\nKøber:\n${buyer.join('\n')}\n\n${line}: ${kr(order.amount)}\nI alt: ${kr(order.amount)}\n${payment}\n${receiptNote}`,
     `Spørgsmål? Svar på denne mail eller skriv til ${SELLER.email}.`,
     'Lykke Padel · LykkeLiga og NORMAL',
   ].join('\n\n');
@@ -56,7 +56,7 @@ ${p(`Vis billetterne på din telefon ved indgangen. Hver billet har sin egen QR-
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 0;padding:20px;background:#f3ead2;border-radius:8px">
 <tr><td colspan="2" style="font:bold 18px/1.3 Arial,Helvetica,sans-serif;color:#2b1513;padding-bottom:12px">Kvittering ${esc(order.receipt)}</td></tr>
 <tr><td style="${cell};width:50%;padding-right:12px"><strong>Sælger</strong><br>${seller.map(esc).join('<br>')}</td><td style="${cell}"><strong>Køber</strong><br>${buyer.map(esc).join('<br>')}</td></tr>
-<tr><td colspan="2" style="${cell};padding-top:12px">Dato: ${day(order.paid_at)}</td></tr>
+<tr><td colspan="2" style="${cell};padding-top:12px">${order.order_no ? `Ordre: ${esc(order.order_no)}<br>` : ''}Dato: ${day(order.paid_at)}</td></tr>
 <tr><td style="${cell};border-top:1px solid #e9dcc4;padding-top:10px">${esc(line)}</td><td align="right" style="${cell};border-top:1px solid #e9dcc4;padding-top:10px">${kr(order.amount)}</td></tr>
 <tr><td style="${cell};font-weight:bold">I alt</td><td align="right" style="${cell};font-weight:bold">${kr(order.amount)}</td></tr>
 <tr><td colspan="2" style="${cell};padding-top:10px;color:#6b4a44">${esc(payment)}. ${esc(receiptNote)}</td></tr>

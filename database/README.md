@@ -154,7 +154,9 @@ Kør `tickets.sql` én gang efter `auction-setup.sql`. Den opretter billetsalget
 
 Kvitteringsmailen sendes af `/api/ticket-receipt` gennem Resend én gang pr. ordre. Teksten findes i `src/ticket-receipt.js`.
 
-`node --test tests/tickets.test.mjs tests/ticket-receipt.test.mjs` tester billetsalget og mailen.
+Kør derefter `ticket-order-numbers.sql` én gang. Den giver hver ordre et ordrenummer, som QuickPay kan bruge (4–20 tegn, kun bogstaver og tal): `LP00001`, `LP00002` … for rigtige køb og `LPT00001` … for testkøb. Forstavelsen `LP` holder numrene adskilt fra webshoppen på lykkeliga.dk. Eksisterende ordrer nummereres efter oprettelse. Ordrenummeret står på billetsiden, i mailen og i admin. Kvitteringsnummeret (`LP-2027-0001`) er uændret og tildeles først ved betaling.
+
+`node --test tests/tickets.test.mjs tests/ticket-receipt.test.mjs tests/ticket-order-numbers.test.mjs` tester billetsalget, mailen og ordrenumrene.
 
 ## Admin: ret deltageroplysninger
 
