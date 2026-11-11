@@ -211,7 +211,7 @@ function details() {
       ${true ? `<div class="lp-field"><label for="ev-display">Synligt navn ved bud</label><input id="ev-display" class="lp-input" name="display" autocomplete="nickname" minlength="2" maxlength="40" value="${esc(draft.display)}" required><p class="lp-help">Vises ved dine bud i Lykke Auktion, så alle kan følge med. Brug dit navn, et kaldenavn eller din virksomheds navn.</p></div>` : ''}
       ${draft.type === 'pair' ? `<div class="lp-field"><label for="ev-partner">Din makkers fulde navn</label><input id="ev-partner" class="lp-input" name="partner" minlength="2" maxlength="120" value="${esc(draft.partner)}" required></div>` : ''}
       ${playerFields(draft.type, draft.player)}
-      <div class="lp-field"><label for="ev-code">Rabatkode</label><input id="ev-code" class="lp-input" name="code" autocomplete="off" maxlength="80" value="${esc(draft.code)}"><p class="lp-help">Rabatten beregnes, når du fortsætter.</p></div>
+      <div class="lp-field"><label for="ev-code">Rabatkode <span class="lp-help">(valgfri)</span></label><input id="ev-code" class="lp-input" name="code" autocomplete="off" maxlength="80" value="${esc(draft.code)}"><p class="lp-help">Kun hvis du har fået en kode af LykkeLiga. Ellers får du en faktura efter tilmeldingen.</p></div>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Fortsæt</button></div>
     </form>
     ${summary([[`${LABELS[draft.type]} · ${p.seats} ${p.seats === 1 ? 'spiller' : 'spillere'}`, money(p.price)]], draft.type === 'individual' ? 'Giver adgang til at byde på padelmakkere i Lykke Auktion. Et eventuelt vinderbud faktureres separat efter auktionen.' : 'Makkerpar kan byde på charity-produkterne i Lykke Auktion.')}
@@ -260,16 +260,16 @@ function review() {
   content.innerHTML = `<div class="lp-split">
     <form id="event-confirm" class="lp-form" style="flex: 999 1 520px">
       <dl class="lp-summary" style="border-top: 2px solid var(--ink)">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd style="text-align: right; white-space: pre-line">${v}</dd></div>`).join('')}</dl>
-      <label class="lp-check"><input name="confirm" type="checkbox" required><span>Jeg bekræfter min tilmelding. Oplysningerne gemmes hos LykkeLiga og bruges til deltagelse og auktionsadgang.</span></label>
+      <label class="lp-check"><input name="confirm" type="checkbox" required><span>Jeg bekræfter min tilmelding${quote.amount_due ? ` og accepterer, at deltagelsen faktureres med ${money(quote.amount_due)}` : ''}. Oplysningerne gemmes hos LykkeLiga og bruges til deltagelse, fakturering og auktionsadgang.</span></label>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">${currentUser ? 'Bekræft tilmelding' : 'Send kode til min mail'}</button></div>
     </form>
     ${summary(
       [
         [`${LABELS[draft.type]} · ${packages[draft.type].seats} ${packages[draft.type].seats === 1 ? 'spiller' : 'spillere'}`, money(quote.base_price)],
-        ['Rabat', quote.discount_amount ? '−' + money(quote.discount_amount) : money(0)],
-        ['I alt', money(quote.amount_due), true],
+        ...(quote.discount_amount ? [['Rabat', '−' + money(quote.discount_amount)]] : []),
+        [quote.amount_due ? 'Faktureres' : 'I alt', money(quote.amount_due), true],
       ],
-      'Kun tilmeldinger til 0 kr. kan gennemføres, indtil betaling åbner.',
+      quote.amount_due ? 'Du betaler ikke nu. LykkeLiga sender en faktura til din faktureringsadresse efter tilmeldingen.' : 'Deltagelsen er gratis med rabatkoden.',
     )}
   </div>`;
   $('#shell-back').onclick = (event) => {
@@ -277,7 +277,6 @@ function review() {
     details();
   };
   formAction('#event-confirm', async () => {
-    if (quote.amount_due !== 0) throw new Error('Betaling er ikke åbnet endnu. Brug en gyldig rabatkode for at gennemføre tilmeldingen.');
     if (currentUser) await complete();
     else await sendCode(draft.email, true, complete);
   });
@@ -588,7 +587,7 @@ function receipt(r, { nameProblem = '', detailsProblem = '' } = {}) {
         <a class="lp-btn lp-btn--primary lp-btn--large" href="/auktion">${cancelled ? 'Se auktionen' : 'Gå til Lykke Auktion'}</a>
         <a class="lp-btn lp-btn--secondary lp-btn--large" href="/forsidetest#program">Program for dagen</a>
       </div>
-      <p class="lp-help">Du kan altid komme tilbage via lykkepadel.dk/deltager. På en ny enhed får du en ny kode på mail. Vi sender endnu ikke en kvitteringsmail.</p>
+      <p class="lp-help">Du kan altid komme tilbage via lykkepadel.dk/deltager. På en ny enhed får du en ny kode på mail.</p>
       <div><button class="lp-btn--text" type="button" id="event-logout">Log ud</button></div>
     </section>
     ${summary(
@@ -597,7 +596,7 @@ function receipt(r, { nameProblem = '', detailsProblem = '' } = {}) {
         ...(r.partner_name ? [['Makker', esc(r.partner_name)]] : []),
         ['Mail', esc(r.email)],
         ['Telefon', esc(r.phone)],
-        ['Betalt', `${money(r.amount_due)}${r.discount_code ? ' (rabatkode)' : ''}`],
+        ['Pris', r.settlement === 'invoice' ? `${money(r.amount_due)} · ${r.paid_at ? 'Betalt' : r.invoice_sent_at ? 'Faktura sendt' : 'Faktura følger'}` : `${money(0)} (rabatkode)`],
         ...(r.shirt_size ? [['T-shirt', esc(r.partner_shirt_size ? `${r.shirt_size} / makker ${r.partner_shirt_size}` : r.shirt_size)]] : []),
       ],
       contactNote(!cancelled),

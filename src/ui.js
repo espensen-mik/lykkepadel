@@ -143,3 +143,30 @@ export function downloadCsv(filename, header, rows) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// Invoice and payment status for admin tables: two checkboxes that save straight away.
+export const yesDate = (value) => (value ? new Date(value).toLocaleDateString('da-DK') : '');
+export function paymentChecks(id, { invoice_sent_at, paid_at }) {
+  const box = (field, label, value) =>
+    `<label class="lp-check lp-check--small"><input type="checkbox" data-pay="${esc(id)}" data-field="${field}" ${value ? 'checked' : ''}><span>${label}${value ? ` <span class="lp-help">${yesDate(value)}</span>` : ''}</span></label>`;
+  return `<div class="lp-paychecks">${box('p_invoice_sent', 'Faktura sendt', invoice_sent_at)}${box('p_paid', 'Betalt', paid_at)}</div>`;
+}
+export function bindPaymentChecks(root, save) {
+  root.querySelectorAll('[data-pay]').forEach((input) => {
+    input.onchange = async () => {
+      input.disabled = true;
+      const date = input.parentElement.querySelector('.lp-help');
+      try {
+        await save(input.dataset.pay, { [input.dataset.field]: input.checked });
+        if (date) date.remove();
+        if (input.checked) input.nextElementSibling.insertAdjacentHTML('beforeend', ` <span class="lp-help">${yesDate(new Date())}</span>`);
+        toast(input.checked ? 'Markeret.' : 'Markering fjernet.');
+      } catch (error) {
+        input.checked = !input.checked;
+        toast(/PGRST202|could not find/i.test(`${error?.code} ${error?.message}`) ? 'Kør database/invoice-payments.sql i Supabase først.' : errorMessage(error));
+      } finally {
+        input.disabled = false;
+      }
+    };
+  });
+}

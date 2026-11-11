@@ -169,6 +169,9 @@ textarea.lp-input{padding:14px 16px;min-height:96px;resize:vertical}
 .lp-ok{margin:0;font:700 14px/1.5 var(--font-body);color:var(--brown)}
 .lp-check{display:flex;gap:12px;align-items:flex-start;font:400 15px/1.5 var(--font-body)}
 .lp-check input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--red-deep);flex:none}
+.lp-paychecks{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.lp-check--small{gap:8px;font-size:14px;white-space:nowrap;cursor:pointer}
+.lp-check--small input{width:18px;height:18px}
 .lp-progress{display:flex;flex-wrap:wrap;gap:8px 32px;margin:0;padding:0;list-style:none;font:600 15px var(--font-body);color:var(--ink-muted)}
 .lp-progress li{display:flex;align-items:center;gap:10px}
 .lp-progress b{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--radius-pill);border:2px solid var(--ink-muted);font:400 20px var(--font-display)}
