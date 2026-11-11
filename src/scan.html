@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#2b1513">
+  <title>Billetscanner – Lykke Padel</title>
+  <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+  <link rel="preload" href="/fonts/BebasNeue-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap">
+  <style>
+    @font-face { font-family: 'Bebas Neue'; src: url('/fonts/BebasNeue-Regular.ttf') format('truetype'); font-display: swap; }
+    :root { --brown: #2b1513; --cream: #fffce0; --sand: #e9dcc4; --red: #d42f20; --green: #1f7a3a; --yellow: #f2c94c; --display: 'Bebas Neue', Impact, sans-serif; --body: 'Archivo', Arial, sans-serif; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--brown); color: var(--cream); font: 400 16px/1.5 var(--body); }
+    .scan { max-width: 520px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 20px;
+      padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+    .scan__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .scan__top img { height: 22px; width: auto; display: block; }
+    .scan h1 { margin: 0; font: 400 44px/1 var(--display); letter-spacing: .5px; }
+    .scan p { margin: 0; }
+    .muted { color: var(--sand); font-size: 14px; }
+    .count { font: 400 28px/1 var(--display); letter-spacing: .5px; }
+    label { font-weight: 600; font-size: 14px; }
+    input { width: 100%; min-height: 56px; padding: 0 16px; border: 2px solid var(--sand); border-radius: 12px; background: #fff; color: var(--brown); font: 700 22px var(--body); letter-spacing: 2px; text-transform: uppercase; }
+    input:focus { outline: 3px solid var(--yellow); outline-offset: 2px; }
+    button { min-height: 56px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--red); color: var(--cream); font: 800 17px var(--body); cursor: pointer; }
+    button.secondary { background: transparent; border: 2px solid var(--sand); color: var(--cream); min-height: 44px; font-size: 15px; }
+    button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+    button:disabled { opacity: .6; }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    .row { display: flex; gap: 10px; }
+    .row input { flex: 1; min-width: 0; }
+    .result { border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 18px; }
+    .result strong { font: 400 52px/1 var(--display); letter-spacing: .5px; }
+    .result.ok { background: var(--green); color: #fff; }
+    .result.bad { background: var(--red); color: #fff; }
+    .result.warn { background: var(--yellow); color: var(--brown); }
+    .result.idle { background: rgba(255,252,224,.08); color: var(--sand); }
+    .result button { align-self: flex-start; margin-top: 8px; min-height: 44px; background: rgba(0,0,0,.25); }
+    .camera { position: relative; border-radius: 18px; overflow: hidden; background: #000; aspect-ratio: 1; }
+    .camera video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .camera::after { content: ""; position: absolute; inset: 18%; border: 3px solid rgba(255,252,224,.85); border-radius: 16px; pointer-events: none; }
+    .help { background: rgba(255,252,224,.08); border-radius: 14px; padding: 16px; font-size: 15px; }
+    .error { background: var(--red); color: #fff; border-radius: 12px; padding: 12px 16px; font-weight: 600; }
+    [hidden] { display: none !important; }
+  </style>
+  <script src="/scan.js" type="module"></script>
+</head>
+<body>
+<main class="scan" id="main"><p class="muted">Et øjeblik …</p></main>
+</body>
+</html>

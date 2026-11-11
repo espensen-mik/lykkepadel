@@ -32,6 +32,7 @@ const pages = {
   billet: ['src/tickets.html', 'showkamp'],
   handelsbetingelser: ['src/handelsbetingelser.html', ''],
   privatlivspolitik: ['src/privatlivspolitik.html', ''],
+  scan: ['src/scan.html', ''],
 };
 for (const [route, [template, current]] of Object.entries(pages)) {
   await mkdir(`dist/${route}`, { recursive: true });
@@ -39,7 +40,7 @@ for (const [route, [template, current]] of Object.entries(pages)) {
 }
 
 await build({
-  entryPoints: { auction: 'src/auction.js', front: 'src/front.js', header: 'src/header.js', tickets: 'src/tickets.js' },
+  entryPoints: { auction: 'src/auction.js', front: 'src/front.js', header: 'src/header.js', tickets: 'src/tickets.js', scan: 'src/scan.js' },
   outdir: 'dist',
   bundle: true,
   format: 'esm',

@@ -43,8 +43,19 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px">
     <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Solgte billetter</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${sold} / ${settings.capacity}</p><p class="lp-help">${settings.remaining} tilbage, inkl. reservationer.</p></div>
     <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Billetsalg</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${money(real.reduce((sum, o) => sum + o.amount, 0))}</p><p class="lp-help">${real.length} betalte ordrer. Testkøb tæller ikke med.</p></div>
-    <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Tjekket ind</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${checkedIn} / ${sold}</p><p class="lp-help">Scan billettens QR-kode med telefonens kamera.</p></div>
+    <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Tjekket ind</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${checkedIn} / ${sold}</p><p class="lp-help">Frivillige scanner på lykkepadel.dk/scan.</p></div>
   </div>
+  <section class="lp-checkin" aria-labelledby="scanner-title" style="margin-bottom: 16px">
+    <h2 id="scanner-title" style="margin: 0; font: 800 20px var(--font-body)">Scanner til frivillige</h2>
+    <p class="lp-help">Frivillige åbner <strong>lykkepadel.dk/scan</strong> på deres egen telefon og logger ind med dagens kode. De ser kun fornavn og antal fra ordren. En ny kode gør den gamle ugyldig.</p>
+    <div id="scanner-status" class="lp-help"></div>
+    <div class="lp-actions" style="align-items: flex-end">
+      <div class="lp-field"><label for="scanner-hours">Koden virker i</label><select id="scanner-hours" class="lp-input"><option value="6">6 timer</option><option value="12" selected>12 timer</option><option value="24">24 timer</option><option value="72">3 døgn</option></select></div>
+      <button class="lp-btn lp-btn--primary" type="button" id="scanner-new">Lav ny kode</button>
+      <button class="lp-btn lp-btn--secondary" type="button" id="scanner-stop" hidden>Slå koden fra</button>
+    </div>
+    <div id="scanner-code" aria-live="polite"></div>
+  </section>
   <section class="lp-checkin" aria-labelledby="checkin-title" style="margin-bottom: 32px">
     <h2 id="checkin-title" style="margin: 0; font: 800 20px var(--font-body)">Tjek billet ind</h2>
     <form id="checkin-form" class="lp-actions" style="align-items: flex-end">
@@ -90,6 +101,7 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
     input.value = '';
     input.focus();
   };
+  setupScanner(client);
   if (code) {
     await checkIn(code);
     $('#checkin-title').scrollIntoView({ block: 'start' });
@@ -150,4 +162,38 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
       };
     };
   });
+}
+
+// The day code for volunteers. Shown once when it is made; only a hash is kept in the database.
+async function setupScanner(client) {
+  const status = $('#scanner-status');
+  const stop = $('#scanner-stop');
+  const clock = (value) => new Date(value).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Copenhagen' });
+  const show = async () => {
+    const { data, error } = await client.rpc('scan_code_status');
+    if (error) {
+      status.textContent = /PGRST202|could not find/i.test(`${error.code} ${error.message}`) ? 'Kør database/ticket-scanner.sql i Supabase for at slå scanneren til.' : error.message;
+      $('#scanner-new').disabled = true;
+      return;
+    }
+    status.innerHTML = data.active ? `<span class="lp-pill lp-pill--lead">Aktiv</span> Koden virker til ${clock(data.valid_until)}.` : '<span class="lp-pill lp-pill--quiet">Slået fra</span> Ingen gyldig kode.';
+    stop.hidden = !data.active;
+  };
+  $('#scanner-new').onclick = async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    const { data, error } = await client.rpc('new_scan_code', { p_hours: Number($('#scanner-hours').value) });
+    button.disabled = false;
+    if (error) return toast(errorMessage(error));
+    $('#scanner-code').innerHTML = `<div class="lp-checkin__result is-ok"><strong>${esc(data.code)}</strong>Giv koden til de frivillige. Den vises kun nu og virker til ${clock(data.valid_until)}.</div>`;
+    await show();
+  };
+  stop.onclick = async () => {
+    const { error } = await client.rpc('stop_scan_code');
+    if (error) return toast(errorMessage(error));
+    $('#scanner-code').innerHTML = '';
+    toast('Scannerkoden er slået fra.');
+    await show();
+  };
+  await show();
 }

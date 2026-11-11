@@ -164,6 +164,16 @@ Kør `admin-edit-registration.sql` én gang efter `registration-details.sql`. De
 
 `node --test tests/admin-edit-registration.test.mjs` tester funktionen.
 
+## Billetscanner til frivillige (/scan)
+
+Kør `ticket-scanner.sql` én gang efter `tickets.sql`. Den tilføjer en dagskode til scanneren på `lykkepadel.dk/scan`:
+
+- Admin laver koden under Billetter (`new_scan_code(timer)`, 1–72 timer). Koden er 12 tilfældige tegn, vises én gang og gemmes kun som hash. En ny kode gør den gamle ugyldig, og `stop_scan_code()` slår den fra.
+- Frivillige logger ind med koden på deres egen telefon uden Google-login. `scan_ticket(kode, billet, fortryd)` tjekker billetter ind efter de samme regler som admin. Scanneren viser kun køberens fornavn og hvor mange fra ordren, der er tjekket ind.
+- Billetternes QR-kode peger nu på `/scan#KODE`. På Android læser siden QR-koder med kameraet. På iPhone scanner man med kamera-appen, som åbner linket i scanneren. Ældre links til `/admin#billet/KODE` sendes videre til scanneren for alle, der ikke er administratorer.
+
+`node --test tests/ticket-scanner.test.mjs` tester koden og indtjekningen.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
