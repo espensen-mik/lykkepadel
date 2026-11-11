@@ -94,6 +94,19 @@ Kør `auction-lots-2027.sql` én gang efter `auction-items.sql`. Den opretter de
 
 `node --test tests/auction-lots-2027.test.mjs` tester filen.
 
+## Admin: starttid, papirkurv og billed-upload
+
+Kør `auction-admin-tools.sql` én gang efter `auction-items.sql`. Den:
+
+- tilføjer kolonnen `starts_at` til `auction_lots`. Tom betyder, at der kan bydes, så snart auktionen er live. Med en starttid vises auktionen med nedtælling, og databasen afviser bud før starttidspunktet.
+- tilføjer `save_auction_lot` med starttid (11 argumenter). De ældre udgaver virker stadig og rører ikke starttiden.
+- tilføjer status `trashed` (papirkurv) samt `trash_auction_lot(id, true/false)` og `delete_auction_lot(id)`. En auktion i papirkurven er skjult for alle undtagen admin og gendannes som kladde. Kun auktioner i papirkurven uden bud kan slettes for altid, så budhistorik aldrig forsvinder.
+- opretter den offentlige Storage-bucket `auction-images` (kun JPEG, højst 5 MB). Alle kan se billederne, men kun administratorer kan uploade og slette dem. Billedet beskæres og får duotone i browseren, før det uploades.
+
+Før kørslen virker admin som før. Starttid, papirkurv og upload giver en besked om at køre filen.
+
+`node --test tests/auction-admin-tools.test.mjs` tester starttid, papirkurv, sletning og bucket-adgang.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
