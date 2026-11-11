@@ -64,7 +64,7 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
         <td><strong>${esc(o.buyer_name)}</strong><br>${esc(o.email)}${o.phone ? `<br>${esc(o.phone)}` : ''}${o.company_name ? `<br><span class="lp-help">${esc(o.company_name)} · CVR ${esc(o.company_cvr)}</span>` : ''}</td>
         <td class="num">${o.quantity}${o.status === 'paid' ? `<br><span class="lp-help">${o.tickets.filter((t) => t.checked_in_at).length} tjekket ind</span>` : ''}</td>
         <td class="num">${money(o.amount)}</td>
-        <td><span class="lp-pill ${o.status === 'paid' ? 'lp-pill--lead' : 'lp-pill--quiet'}">${STATUS[o.status]}</span>${o.status === 'paid' ? `<br><span class="lp-help">${o.receipt_sent_at ? 'Kvittering sendt' : 'Kvittering ikke sendt'}</span>` : ''}</td>
+        <td><span class="lp-pill ${o.status === 'paid' ? 'lp-pill--lead' : 'lp-pill--quiet'}">${STATUS[o.status]}</span>${o.status === 'paid' ? `<br><span class="lp-help" data-receipt-status>${o.receipt_sent_at ? 'Kvittering sendt' : 'Kvittering ikke sendt'}</span>` : ''}</td>
         <td>${time(o.created_at)}</td>
         <td><div class="lp-row-actions">${o.status === 'paid' ? `<button class="lp-btn--text" type="button" data-receipt="${esc(o.id)}">Send kvittering</button>` : ''}${['paid', 'pending'].includes(o.status) ? `<button class="lp-btn--text" type="button" data-cancel-order="${esc(o.id)}">Annuller</button>` : ''}</div></td>
       </tr>`,
@@ -103,6 +103,7 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
   body.querySelectorAll('[data-receipt]').forEach((button) => {
     button.onclick = async () => {
       button.disabled = true;
+      button.textContent = 'Sender …';
       try {
         const { data } = await client.auth.getSession();
         const response = await fetch('/api/ticket-receipt', {
@@ -112,8 +113,18 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || 'Kvitteringen kunne ikke sendes.');
+        // A clear mark in the row itself, so it is easy to see which receipts went out.
+        const row = button.closest('tr');
+        row.querySelector('[data-receipt-status]')?.replaceChildren('Kvittering sendt');
+        row.querySelector('.lp-sent')?.remove();
+        button.insertAdjacentHTML('beforebegin', `<span class="lp-sent is-ok" role="status">✓ Sendt til ${esc(result.to)} kl. ${new Date().toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })}</span>`);
+        button.textContent = 'Send igen';
         toast(`Kvitteringen er sendt til ${result.to}.`);
       } catch (error) {
+        const row = button.closest('tr');
+        row.querySelector('.lp-sent')?.remove();
+        button.insertAdjacentHTML('beforebegin', `<span class="lp-sent is-bad" role="alert">${esc(errorMessage(error))}</span>`);
+        button.textContent = 'Prøv igen';
         toast(errorMessage(error));
       } finally {
         button.disabled = false;
