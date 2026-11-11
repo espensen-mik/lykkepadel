@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "2.118.0",
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "jsqr": "1.4.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.14"

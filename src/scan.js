@@ -1,5 +1,7 @@
 // Ticket scanner for volunteers at /scan. They log in with the day code from admin on their own phones.
-// Android Chrome reads QR codes in the page; on iPhone the camera app opens /scan#CODE, which checks the ticket in here.
+// The camera reads QR codes in the page: with the browser's own reader where it has one (Android Chrome),
+// otherwise with jsQR (iPhone). Links from the phone's camera app (/scan#CODE) and typed codes also work.
+import jsQR from 'jsqr';
 const main = document.getElementById('main');
 const KEY = 'lykke-scan-code';
 const TICKET = /([0-9A-F]{4}-[0-9A-F]{4})\s*$/i;
@@ -82,15 +84,15 @@ function login(message = '') {
 }
 
 function scanner(status) {
-  const camera = 'BarcodeDetector' in window;
+  const camera = Boolean(navigator.mediaDevices?.getUserMedia);
   main.innerHTML = `
     <div class="scan__top"><img src="/images/brand/lykkepadel-wide-creme.svg" alt="Lykke Padel"><button class="secondary" type="button" id="logout">Log ud</button></div>
     <div><p class="count" id="count"></p><p class="muted">Koden virker til kl. ${time(status.valid_until)}.</p></div>
-    <div class="result idle" id="result" aria-live="assertive"><strong>Klar</strong>${camera ? 'Start kameraet, og hold QR-koden inden for rammen.' : 'Scan QR-koden med telefonens kamera-app, og tryk på linket.'}</div>
+    <div class="result idle" id="result" aria-live="assertive"><strong>Klar</strong>${camera ? 'Tryk på Start kamera, og hold QR-koden inden for rammen.' : 'Scan QR-koden med telefonens kamera-app, og tryk på linket.'}</div>
     ${camera
       ? `<div class="camera" id="camera" hidden><video id="video" playsinline muted></video></div>
          <button type="button" id="camera-toggle">Start kamera</button>`
-      : `<p class="help">På denne telefon kan siden ikke selv læse QR-koder. Åbn <strong>kamera-appen</strong>, peg på billettens QR-kode, og tryk på linket, der dukker op. Billetten tjekkes så ind her. Du kan også taste koden herunder.</p>`}
+      : `<p class="help">Denne browser giver ikke adgang til kameraet. Åbn <strong>kamera-appen</strong>, peg på billettens QR-kode, og tryk på linket, der dukker op. Billetten tjekkes så ind her. Du kan også taste koden herunder.</p>`}
     <form id="manual">
       <label for="ticket-code">Billetkode</label>
       <div class="row"><input id="ticket-code" name="ticket" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AB12-CD34" maxlength="9"><button type="submit">Tjek ind</button></div>
@@ -164,12 +166,11 @@ async function startCamera() {
   document.getElementById('camera').hidden = false;
   button.textContent = 'Stop kamera';
   wakeLock = await navigator.wakeLock?.request('screen').catch(() => null);
-  const detector = new BarcodeDetector({ formats: ['qr_code'] });
+  const read = reader(video);
   const loop = async () => {
     if (!stream) return;
     try {
-      const [found] = await detector.detect(video);
-      const code = ticketFrom(found?.rawValue);
+      const code = ticketFrom(await read());
       // The same ticket stays in front of the camera for a moment; check it in once.
       if (code && (code !== last.code || Date.now() - last.at > 5000)) {
         last = { code, at: Date.now() };
@@ -181,6 +182,26 @@ async function startCamera() {
     setTimeout(loop, 250);
   };
   loop();
+}
+
+// Returns a function that reads the QR code in the current video frame, or null.
+function reader(video) {
+  if ('BarcodeDetector' in window) {
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    return async () => (await detector.detect(video))[0]?.rawValue || null;
+  }
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  return async () => {
+    if (!video.videoWidth) return null;
+    // A smaller frame is read faster and is plenty for a ticket held up to the camera.
+    const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    return jsQR(frame.data, frame.width, frame.height, { inversionAttempts: 'dontInvert' })?.data || null;
+  };
 }
 
 function stopCamera() {

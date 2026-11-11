@@ -170,7 +170,7 @@ Kør `ticket-scanner.sql` én gang efter `tickets.sql`. Den tilføjer en dagskod
 
 - Admin laver koden under Billetter (`new_scan_code(timer)`, 1–72 timer). Koden er 12 tilfældige tegn, vises én gang og gemmes kun som hash. En ny kode gør den gamle ugyldig, og `stop_scan_code()` slår den fra.
 - Frivillige logger ind med koden på deres egen telefon uden Google-login. `scan_ticket(kode, billet, fortryd)` tjekker billetter ind efter de samme regler som admin. Scanneren viser kun køberens fornavn og hvor mange fra ordren, der er tjekket ind.
-- Billetternes QR-kode peger nu på `/scan#KODE`. På Android læser siden QR-koder med kameraet. På iPhone scanner man med kamera-appen, som åbner linket i scanneren. Ældre links til `/admin#billet/KODE` sendes videre til scanneren for alle, der ikke er administratorer.
+- Billetternes QR-kode peger nu på `/scan#KODE`. Siden læser QR-koder med kameraet på både Android og iPhone: med browserens egen QR-læser, hvor den findes, og ellers med biblioteket jsQR. Kamera-appens link og indtastning af koden virker også. Ældre links til `/admin#billet/KODE` sendes videre til scanneren for alle, der ikke er administratorer.
 
 `node --test tests/ticket-scanner.test.mjs` tester koden og indtjekningen.
 
