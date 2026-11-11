@@ -46,6 +46,25 @@
     .camera::after { content: ""; position: absolute; inset: 18%; border: 3px solid rgba(255,252,224,.85); border-radius: 16px; pointer-events: none; }
     .help { background: rgba(255,252,224,.08); border-radius: 14px; padding: 16px; font-size: 15px; }
     .error { background: var(--red); color: #fff; border-radius: 12px; padding: 12px 16px; font-weight: 600; }
+    .label { font-weight: 600; font-size: 14px; }
+    .digits { display: flex; align-items: center; gap: 4px; }
+    .digit { flex: 1 1 0; min-width: 0; width: auto; min-height: 52px; padding: 0; text-align: center; font: 700 24px var(--body); letter-spacing: 0; border-radius: 8px; }
+    .dash { flex: none; padding: 0 2px; color: var(--sand); font: 700 20px var(--body); }
+    /* The scanner fits one screen: the camera takes the space that is left. */
+    .scan--app { height: 100vh; height: 100dvh; min-height: 0; gap: 10px; padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    .scan--app .scan__top { align-items: flex-start; }
+    .scan--app .count { font-size: 22px; }
+    .scan--app .muted { font-size: 12px; }
+    .scan--app button { min-height: 46px; font-size: 16px; }
+    .scan--app button.secondary { min-height: 36px; padding: 0 14px; font-size: 13px; }
+    .scan--app .result { flex: none; padding: 12px 16px; gap: 2px; border-radius: 14px; font-size: 15px; line-height: 1.35; }
+    .scan--app .result strong { font-size: 34px; }
+    .scan--app .result button { min-height: 34px; margin-top: 4px; padding: 0 14px; font-size: 14px; }
+    .scan--app .camera { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; border-radius: 14px; }
+    .scan--app .camera::after { inset: 14% 20%; }
+    .scan--app .help { flex: 1 1 auto; font-size: 14px; padding: 12px 14px; }
+    .scan--app input { min-height: 46px; font-size: 17px; letter-spacing: 1px; }
+    .scan--app form { flex: none; }
     [hidden] { display: none !important; }
   </style>
   <script src="/scan.js" type="module"></script>

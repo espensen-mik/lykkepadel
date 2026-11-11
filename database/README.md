@@ -172,6 +172,8 @@ Kør `ticket-scanner.sql` én gang efter `tickets.sql`. Den tilføjer en dagskod
 - Frivillige logger ind med koden på deres egen telefon uden Google-login. `scan_ticket(kode, billet, fortryd)` tjekker billetter ind efter de samme regler som admin. Scanneren viser kun køberens fornavn og hvor mange fra ordren, der er tjekket ind.
 - Billetternes QR-kode peger nu på `/scan#KODE`. Siden læser QR-koder med kameraet på både Android og iPhone: med browserens egen QR-læser, hvor den findes, og ellers med biblioteket jsQR. Kamera-appens link og indtastning af koden virker også. Ældre links til `/admin#billet/KODE` sendes videre til scanneren for alle, der ikke er administratorer.
 
+Kør derefter `ticket-scanner-digits.sql` én gang. Den ændrer koden til 12 cifre (`1234-5678-9012`), så telefonen viser taltastaturet. En eksisterende kode virker, til den udløber; lav en ny i admin bagefter.
+
 `node --test tests/ticket-scanner.test.mjs` tester koden og indtjekningen.
 
 ## Ikke en offentlig lancering

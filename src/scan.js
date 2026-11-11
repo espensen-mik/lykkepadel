@@ -52,25 +52,63 @@ async function connect() {
 // The ticket code from a scanned link (/scan#AB12-CD34 or /admin#billet/AB12-CD34) or typed by hand.
 const ticketFrom = (text) => TICKET.exec(decodeURIComponent(text || '').trim())?.[1]?.toUpperCase() || '';
 
+// Twelve digit boxes in three groups (1234-5678-9012). Typing moves on, backspace moves back,
+// and pasting the whole code fills all boxes.
 function login(message = '') {
   stopCamera();
+  main.classList.remove('scan--app');
+  const group = (start) => Array.from({ length: 4 }, (_, i) => `<input class="digit" inputmode="numeric" pattern="[0-9]*" autocomplete="${start + i === 0 ? 'one-time-code' : 'off'}" aria-label="Ciffer ${start + i + 1} af 12">`).join('');
   main.innerHTML = `
     <div class="scan__top"><img src="/images/brand/lykkepadel-wide-creme.svg" alt="Lykke Padel"></div>
     <h1>Billetscanner</h1>
-    <p class="muted">Skriv dagens kode fra arrangøren. Koden gemmes på telefonen, til den udløber.</p>
+    <p class="muted">Skriv dagens kode fra arrangøren – 12 cifre. Koden gemmes på telefonen, til den udløber.</p>
     ${message ? `<p class="error" role="alert">${esc(message)}</p>` : ''}
     <form id="login">
-      <label for="day-code">Dagens kode</label>
-      <input id="day-code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" maxlength="20" required>
+      <span class="label" id="code-label">Dagens kode</span>
+      <div class="digits" role="group" aria-labelledby="code-label">${group(0)}<span class="dash" aria-hidden="true">–</span>${group(4)}<span class="dash" aria-hidden="true">–</span>${group(8)}</div>
       <button type="submit">Start scanneren</button>
     </form>`;
   const form = document.getElementById('login');
+  const boxes = [...form.querySelectorAll('.digit')];
+  const fill = (digits, from = 0) => {
+    digits.split('').slice(0, 12 - from).forEach((d, i) => (boxes[from + i].value = d));
+    const next = boxes.find((box) => !box.value) || boxes[11];
+    next.focus();
+    if (boxes.every((box) => box.value)) form.requestSubmit();
+  };
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      const digits = box.value.replace(/\D/g, '');
+      box.value = '';
+      if (digits) fill(digits, i);
+    });
+    box.addEventListener('keydown', (event) => {
+      if (event.key === 'Backspace' && !box.value && i > 0) {
+        boxes[i - 1].value = '';
+        boxes[i - 1].focus();
+        event.preventDefault();
+      }
+      if (event.key === 'ArrowLeft' && i > 0) boxes[i - 1].focus();
+      if (event.key === 'ArrowRight' && i < 11) boxes[i + 1].focus();
+    });
+    box.addEventListener('paste', (event) => {
+      event.preventDefault();
+      fill((event.clipboardData?.getData('text') || '').replace(/\D/g, ''), i);
+    });
+    box.addEventListener('focus', () => box.select());
+  });
+  boxes[0].focus();
   form.onsubmit = async (event) => {
     event.preventDefault();
     const button = form.querySelector('button');
-    button.disabled = true;
     form.querySelector('.error')?.remove();
-    const code = form.elements.code.value.trim();
+    const code = boxes.map((box) => box.value).join('');
+    if (code.length < 12) {
+      form.insertAdjacentHTML('beforeend', '<p class="error" role="alert">Skriv alle 12 cifre.</p>');
+      boxes.find((box) => !box.value)?.focus();
+      return;
+    }
+    button.disabled = true;
     try {
       const status = await api('scan_status', { p_scan_code: code });
       dayCode = code;
@@ -79,23 +117,24 @@ function login(message = '') {
     } catch (error) {
       form.insertAdjacentHTML('beforeend', `<p class="error" role="alert">${esc(error.message)}</p>`);
       button.disabled = false;
+      boxes.forEach((box) => (box.value = ''));
+      boxes[0].focus();
     }
   };
 }
 
 function scanner(status) {
   const camera = Boolean(navigator.mediaDevices?.getUserMedia);
+  main.classList.add('scan--app');
   main.innerHTML = `
-    <div class="scan__top"><img src="/images/brand/lykkepadel-wide-creme.svg" alt="Lykke Padel"><button class="secondary" type="button" id="logout">Log ud</button></div>
-    <div><p class="count" id="count"></p><p class="muted">Koden virker til kl. ${time(status.valid_until)}.</p></div>
-    <div class="result idle" id="result" aria-live="assertive"><strong>Klar</strong>${camera ? 'Tryk på Start kamera, og hold QR-koden inden for rammen.' : 'Scan QR-koden med telefonens kamera-app, og tryk på linket.'}</div>
+    <div class="scan__top"><div><p class="count" id="count"></p><p class="muted">Koden virker til kl. ${time(status.valid_until)}</p></div><button class="secondary" type="button" id="logout">Log ud</button></div>
+    <div class="result idle" id="result" aria-live="assertive"><strong>Klar</strong><span>${camera ? 'Tryk på Start kamera, og hold QR-koden i rammen.' : 'Scan QR-koden med kamera-appen, og tryk på linket.'}</span></div>
     ${camera
       ? `<div class="camera" id="camera" hidden><video id="video" playsinline muted></video></div>
          <button type="button" id="camera-toggle">Start kamera</button>`
-      : `<p class="help">Denne browser giver ikke adgang til kameraet. Åbn <strong>kamera-appen</strong>, peg på billettens QR-kode, og tryk på linket, der dukker op. Billetten tjekkes så ind her. Du kan også taste koden herunder.</p>`}
+      : `<p class="help">Browseren giver ikke adgang til kameraet. Scan QR-koden med <strong>kamera-appen</strong>, og tryk på linket. Eller tast koden herunder.</p>`}
     <form id="manual">
-      <label for="ticket-code">Billetkode</label>
-      <div class="row"><input id="ticket-code" name="ticket" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AB12-CD34" maxlength="9"><button type="submit">Tjek ind</button></div>
+      <div class="row"><input id="ticket-code" name="ticket" aria-label="Billetkode" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Billetkode" maxlength="9"><button type="submit">Tjek ind</button></div>
     </form>`;
   showCount(status);
   document.getElementById('logout').onclick = () => {
