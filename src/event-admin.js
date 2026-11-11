@@ -1,4 +1,4 @@
-import { $, esc, money, toast, modal, closeModal, useForm, errorHtml, downloadCsv } from './ui.js';
+import { $, esc, money, toast, modal, closeModal, useForm, errorHtml, downloadCsv, paymentChecks, bindPaymentChecks, yesDate } from './ui.js';
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
@@ -16,8 +16,8 @@ function shirtCounts(rows) {
 }
 
 function exportRegistrations(rows) {
-  const header = ['Reference', 'Status', 'Deltagelse', 'Navn', 'T-shirt', 'Virksomhed', 'Makker', 'Makkers T-shirt', 'Makkers virksomhed', 'Må nævnes i promovering', 'Mail', 'Telefon', 'Faktureringsadresse', 'Oprettet'];
-  const data = rows.map((r) => [r.id.slice(0, 8).toUpperCase(), r.status === 'confirmed' ? 'Bekræftet' : 'Annulleret', r.kind === 'pair' ? 'Makkerpar' : 'Individuel', r.full_name, r.shirt_size, r.company, r.partner_name, r.partner_shirt_size, r.partner_company, r.publish_consent ? 'Ja' : 'Nej', r.email, r.phone, r.billing_address, new Date(r.created_at).toLocaleDateString('da-DK')]);
+  const header = ['Reference', 'Status', 'Deltagelse', 'Pris', 'Afregning', 'Faktura sendt', 'Betalt', 'Navn', 'T-shirt', 'Virksomhed', 'Makker', 'Makkers T-shirt', 'Makkers virksomhed', 'Må nævnes i promovering', 'Mail', 'Telefon', 'Faktureringsadresse', 'Oprettet'];
+  const data = rows.map((r) => [r.id.slice(0, 8).toUpperCase(), r.status === 'confirmed' ? 'Bekræftet' : 'Annulleret', r.kind === 'pair' ? 'Makkerpar' : 'Individuel', r.amount_due, r.settlement === 'invoice' ? 'Faktura' : 'Rabatkode', yesDate(r.invoice_sent_at), yesDate(r.paid_at), r.full_name, r.shirt_size, r.company, r.partner_name, r.partner_shirt_size, r.partner_company, r.publish_consent ? 'Ja' : 'Nej', r.email, r.phone, r.billing_address, new Date(r.created_at).toLocaleDateString('da-DK')]);
   downloadCsv('lykke-padel-tilmeldinger.csv', header, data);
 }
 
@@ -36,6 +36,11 @@ export async function eventAdminView(client, { refresh }) {
   body.innerHTML = `
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px">
     <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Tilmeldte pladser</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${settings.seats_taken} / ${settings.capacity}</p><p class="lp-help">Makkerpar tæller som to pladser.</p></div>
+    ${rows.some((r) => 'paid_at' in r) ? (() => {
+      const billable = rows.filter((r) => r.status === 'confirmed' && r.settlement === 'invoice');
+      const unpaid = billable.filter((r) => !r.paid_at);
+      return `<div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Mangler betaling</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${money(unpaid.reduce((sum, r) => sum + r.amount_due, 0))}</p><p class="lp-help">${billable.length - unpaid.length} af ${billable.length} fakturerede tilmeldinger er betalt. ${billable.filter((r) => !r.invoice_sent_at).length} mangler faktura.</p></div>`;
+    })() : ''}
     ${'shirt_size' in (rows[0] || { shirt_size: null }) ? (() => {
       const { counts, missing } = shirtCounts(rows);
       return `<div class="lp-panel" style="gap: 10px; padding: 22px"><p class="lp-lot__meta">T-shirts</p><p style="margin: 0; font: 600 16px/1.6 var(--font-body)">${SIZES.filter((size) => counts[size]).map((size) => `${size}: ${counts[size]}`).join(' · ') || 'Ingen valgt endnu'}</p>${missing ? `<p class="lp-help">${missing} ${missing === 1 ? 'spiller mangler' : 'spillere mangler'} at vælge.</p>` : ''}</div>`;
@@ -45,7 +50,7 @@ export async function eventAdminView(client, { refresh }) {
   ${rows.length
     ? `<div class="lp-section-head" style="margin-bottom: 16px"><p class="lp-help">T-shirt, virksomhed og samtykke vælger deltagerne selv ved tilmelding og på Min side.</p><button class="lp-btn lp-btn--secondary" type="button" id="export-registrations">Download tilmeldinger (CSV)</button></div>
     <div class="lp-tablebox"><table class="lp-table">
-      <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col">T-shirt og synlighed</th><th scope="col" class="num">Betalt</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
+      <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col">T-shirt og synlighed</th><th scope="col">Betaling</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
       <tbody>${rows
         .map(
           (r) => `<tr>
@@ -53,7 +58,7 @@ export async function eventAdminView(client, { refresh }) {
         <td>${esc(r.email)}<br>${esc(r.phone)}<br><span class="lp-help">${esc(r.billing_address)}</span></td>
         <td>${r.kind === 'individual' ? 'Individuel · 1 plads' : 'Makkerpar · 2 pladser'}</td>
         <td>${'shirt_size' in r ? `${r.shirt_size ? esc(r.shirt_size) : '<span class="lp-help">Ingen størrelse</span>'}${r.kind === 'pair' ? ` / ${r.partner_shirt_size ? esc(r.partner_shirt_size) : '<span class="lp-help">–</span>'}` : ''}${r.company ? `<br>${esc(r.company)}` : ''}${r.partner_company ? `<br><span class="lp-help">& ${esc(r.partner_company)}</span>` : ''}<br><span class="lp-help">${r.publish_consent ? 'Må nævnes' : 'Må ikke nævnes'}</span>` : '<span class="lp-help">–</span>'}</td>
-        <td class="num">${money(r.amount_due)}<br><span class="lp-help">${money(r.discount_amount)} rabat</span></td>
+        <td>${r.settlement === 'invoice' ? `<strong>${money(r.amount_due)}</strong>${'paid_at' in r && r.status === 'confirmed' ? paymentChecks(r.id, r) : ''}` : `${money(0)}<br><span class="lp-help">Rabatkode</span>`}</td>
         <td>${r.status === 'confirmed' ? '<span class="lp-pill lp-pill--lead">Bekræftet</span>' : '<span class="lp-pill lp-pill--quiet">Annulleret</span>'}</td>
         <td>${new Date(r.created_at).toLocaleDateString('da-DK')}</td>
         <td>${r.status === 'confirmed' ? `<button class="lp-btn--text" type="button" data-cancel="${esc(r.id)}">Annuller</button>` : `<button class="lp-btn--text" type="button" data-delete-registration="${esc(r.id)}">Slet</button>`}</td>
@@ -61,6 +66,14 @@ export async function eventAdminView(client, { refresh }) {
         )
         .join('')}</tbody></table></div>`
     : '<div class="lp-empty"><p class="lp-text">Ingen tilmeldinger endnu. Nye tilmeldinger vises her, når mail og rabatkode er bekræftet.</p></div>'}`;
+
+  bindPaymentChecks(body, async (id, values) => {
+    const { error: payError } = await client.rpc('set_registration_payment', { p_id: id, p_invoice_sent: null, p_paid: null, ...values });
+    if (payError) throw payError;
+    const row = rows.find((r) => r.id === id);
+    if ('p_invoice_sent' in values) row.invoice_sent_at = values.p_invoice_sent ? new Date().toISOString() : null;
+    if ('p_paid' in values) row.paid_at = values.p_paid ? new Date().toISOString() : null;
+  });
 
   const exportButton = $('#export-registrations');
   if (exportButton) exportButton.onclick = () => exportRegistrations(rows);

@@ -4,7 +4,7 @@ import { termsFor, keyTerms, stepsFor, faqFor } from './terms.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
 import { imageEditor, isProcessed } from './image-crop.js';
-import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, rememberAdmin, downloadCsv } from './ui.js';
+import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, rememberAdmin, paymentChecks, bindPaymentChecks, yesDate, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
 const path = location.pathname;
@@ -732,14 +732,23 @@ async function adminWinners(body) {
     body.innerHTML = '<div class="lp-empty"><p class="lp-text">Vindere vises her, når en auktion er afsluttet med mindst ét bud.</p></div>';
     return;
   }
-  body.innerHTML = `<div class="lp-section-head" style="margin-bottom: 20px"><p class="lp-help">Fakturagrundlag fra afsluttede auktioner. Faktura oprettes manuelt i jeres fakturasystem.</p><button class="lp-btn lp-btn--secondary" type="button" id="export">Download fakturagrundlag (CSV)</button></div>
+  const tracked = winners.some((w) => 'paid_at' in w);
+  const unpaid = winners.filter((w) => !w.paid_at);
+  body.innerHTML = `<div class="lp-section-head" style="margin-bottom: 20px"><p class="lp-help">Fakturagrundlag fra afsluttede auktioner. Faktura oprettes manuelt i jeres fakturasystem${tracked ? `. ${winners.length - unpaid.length} af ${winners.length} er betalt, og der mangler ${money(unpaid.reduce((sum, w) => sum + w.amount, 0))}` : ''}.</p><button class="lp-btn lp-btn--secondary" type="button" id="export">Download fakturagrundlag (CSV)</button></div>
   <div class="lp-tablebox"><table class="lp-table">
-    <thead><tr><th scope="col">Makker</th><th scope="col" class="num">Vinderbud</th><th scope="col">Vinder</th><th scope="col">Kontakt</th><th scope="col">Faktureringsadresse</th></tr></thead>
-    <tbody>${winners.map((w) => `<tr><td><strong>${esc(w.name)}</strong></td><td class="num">${money(w.amount)}</td><td>${esc(w.full_name)}</td><td>${esc(w.email)}<br>${esc(w.phone)}</td><td>${esc(w.billing_address)}</td></tr>`).join('')}</tbody>
+    <thead><tr><th scope="col">Auktion</th><th scope="col" class="num">Vinderbud</th><th scope="col">Vinder</th><th scope="col">Kontakt</th><th scope="col">Faktureringsadresse</th>${tracked ? '<th scope="col">Betaling</th>' : ''}</tr></thead>
+    <tbody>${winners.map((w) => `<tr><td><strong>${esc(w.name)}</strong></td><td class="num">${money(w.amount)}</td><td>${esc(w.full_name)}</td><td>${esc(w.email)}<br>${esc(w.phone)}</td><td>${esc(w.billing_address)}</td>${tracked ? `<td>${paymentChecks(w.id, w)}</td>` : ''}</tr>`).join('')}</tbody>
   </table></div>`;
+  bindPaymentChecks(body, async (id, values) => {
+    const { error: payError } = await client.rpc('set_auction_lot_payment', { p_lot: id, p_invoice_sent: null, p_paid: null, ...values });
+    if (payError) throw payError;
+    const row = winners.find((w) => w.id === id);
+    if ('p_invoice_sent' in values) row.invoice_sent_at = values.p_invoice_sent ? new Date().toISOString() : null;
+    if ('p_paid' in values) row.paid_at = values.p_paid ? new Date().toISOString() : null;
+  });
   $('#export').onclick = () => {
-    const keys = ['name', 'amount', 'full_name', 'email', 'phone', 'billing_address'];
-    downloadCsv('lykke-padel-fakturagrundlag.csv', keys, winners.map((w) => keys.map((k) => w[k])));
+    const header = ['Auktion', 'Vinderbud', 'Vinder', 'Mail', 'Telefon', 'Faktureringsadresse', 'Faktura sendt', 'Betalt'];
+    downloadCsv('lykke-padel-fakturagrundlag.csv', header, winners.map((w) => [w.name, w.amount, w.full_name, w.email, w.phone, w.billing_address, yesDate(w.invoice_sent_at), yesDate(w.paid_at)]));
   };
 }
 

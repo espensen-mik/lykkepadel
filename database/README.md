@@ -118,6 +118,19 @@ Login-kontoen i Supabase Auth slettes ikke, så personen kan oprette en ny profi
 
 `node --test tests/delete-people.test.mjs` tester reglerne.
 
+## Faktura: tilmelding og vundne auktioner
+
+Kør `invoice-payments.sql` én gang efter `auction-items.sql`. Den:
+
+- lader tilmeldinger blive faktureret. Uden rabatkode gemmes tilmeldingen til fuld pris med afregning `invoice`. Med den gyldige rabatkode er den stadig gratis (`discount`). Eksisterende tilmeldinger røres ikke.
+- giver individuelle deltagere adgang til at byde på padelmakkere, så snart tilmeldingen er bekræftet, også før fakturaen er betalt.
+- tilføjer `invoice_sent_at` og `paid_at` på tilmeldinger og en privat tabel `lot_payments` til vundne auktioner. Vinderlisten (`auction_winners`) viser nu de to felter.
+- tilføjer `set_registration_payment(id, faktura_sendt, betalt)` og `set_auction_lot_payment(lot, faktura_sendt, betalt)`, som kun administratorer kan kalde. `null` lader et felt være uændret. Ændringer skrives i audit-loggen.
+
+Selve fakturaerne laves fortsat i jeres regnskabsprogram. Før kørslen kan tilmeldinger uden rabatkode ikke gennemføres, og felterne vises ikke i admin.
+
+`node --test tests/invoice-payments.test.mjs` tester reglerne.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
