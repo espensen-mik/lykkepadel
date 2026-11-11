@@ -4,6 +4,7 @@ import { termsFor, keyTerms, stepsFor, faqFor } from './terms.js';
 import { mountEvent } from './event.js';
 import { eventAdminView } from './event-admin.js';
 import { imageEditor, isProcessed } from './image-crop.js';
+import { winnerMail } from './winner-mail.js';
 import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, rememberAdmin, paymentChecks, bindPaymentChecks, yesDate, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
@@ -733,11 +734,14 @@ async function adminWinners(body) {
     return;
   }
   const tracked = winners.some((w) => 'paid_at' in w);
+  const mailing = winners.some((w) => 'winner_mail_sent_at' in w);
   const unpaid = winners.filter((w) => !w.paid_at);
-  body.innerHTML = `<div class="lp-section-head" style="margin-bottom: 20px"><p class="lp-help">Fakturagrundlag fra afsluttede auktioner. Faktura oprettes manuelt i jeres fakturasystem${tracked ? `. ${winners.length - unpaid.length} af ${winners.length} er betalt, og der mangler ${money(unpaid.reduce((sum, w) => sum + w.amount, 0))}` : ''}.</p><button class="lp-btn lp-btn--secondary" type="button" id="export">Download fakturagrundlag (CSV)</button></div>
+  const unsent = winners.filter((w) => !w.winner_mail_sent_at);
+  const mailCell = (w) => `<td><div class="lp-row-actions" style="justify-content: flex-start">${w.winner_mail_sent_at ? `<span class="lp-pill lp-pill--lead">Sendt ${yesDate(w.winner_mail_sent_at)}</span>` : '<span class="lp-pill lp-pill--quiet">Ikke sendt</span>'}<button class="lp-btn--text" type="button" data-mail="${esc(w.id)}">Vis</button></div></td>`;
+  body.innerHTML = `<div class="lp-section-head" style="margin-bottom: 20px"><p class="lp-help">Fakturagrundlag fra afsluttede auktioner. Faktura oprettes manuelt i jeres fakturasystem${tracked ? `. ${winners.length - unpaid.length} af ${winners.length} er betalt, og der mangler ${money(unpaid.reduce((sum, w) => sum + w.amount, 0))}` : ''}.</p><div class="lp-actions"><button class="lp-btn lp-btn--secondary" type="button" id="export">Download fakturagrundlag (CSV)</button>${mailing && unsent.length ? `<button class="lp-btn lp-btn--primary" type="button" id="send-all">Send vindermails (${unsent.length})</button>` : ''}</div></div>
   <div class="lp-tablebox"><table class="lp-table">
-    <thead><tr><th scope="col">Auktion</th><th scope="col" class="num">Vinderbud</th><th scope="col">Vinder</th><th scope="col">Kontakt</th><th scope="col">Faktureringsadresse</th>${tracked ? '<th scope="col">Betaling</th>' : ''}</tr></thead>
-    <tbody>${winners.map((w) => `<tr><td><strong>${esc(w.name)}</strong></td><td class="num">${money(w.amount)}</td><td>${esc(w.full_name)}</td><td>${esc(w.email)}<br>${esc(w.phone)}</td><td>${esc(w.billing_address)}</td>${tracked ? `<td>${paymentChecks(w.id, w)}</td>` : ''}</tr>`).join('')}</tbody>
+    <thead><tr><th scope="col">Auktion</th><th scope="col" class="num">Vinderbud</th><th scope="col">Vinder</th><th scope="col">Kontakt</th><th scope="col">Faktureringsadresse</th>${mailing ? '<th scope="col">Vindermail</th>' : ''}${tracked ? '<th scope="col">Betaling</th>' : ''}</tr></thead>
+    <tbody>${winners.map((w) => `<tr><td><strong>${esc(w.name)}</strong></td><td class="num">${money(w.amount)}</td><td>${esc(w.full_name)}</td><td>${esc(w.email)}<br>${esc(w.phone)}</td><td>${esc(w.billing_address)}</td>${mailing ? mailCell(w) : ''}${tracked ? `<td>${paymentChecks(w.id, w)}</td>` : ''}</tr>`).join('')}</tbody>
   </table></div>`;
   bindPaymentChecks(body, async (id, values) => {
     const { error: payError } = await client.rpc('set_auction_lot_payment', { p_lot: id, p_invoice_sent: null, p_paid: null, ...values });
@@ -746,9 +750,81 @@ async function adminWinners(body) {
     if ('p_invoice_sent' in values) row.invoice_sent_at = values.p_invoice_sent ? new Date().toISOString() : null;
     if ('p_paid' in values) row.paid_at = values.p_paid ? new Date().toISOString() : null;
   });
+  body.querySelectorAll('[data-mail]').forEach((button) => {
+    button.onclick = () => previewWinnerMail(winners.find((w) => w.id === button.dataset.mail));
+  });
+  $('#send-all')?.addEventListener('click', () => confirmWinnerMails(unsent));
   $('#export').onclick = () => {
     const header = ['Auktion', 'Vinderbud', 'Vinder', 'Mail', 'Telefon', 'Faktureringsadresse', 'Faktura sendt', 'Betalt'];
     downloadCsv('lykke-padel-fakturagrundlag.csv', header, winners.map((w) => [w.name, w.amount, w.full_name, w.email, w.phone, w.billing_address, yesDate(w.invoice_sent_at), yesDate(w.paid_at)]));
+  };
+}
+
+// Winner mails are sent by /api/winner-mails with the admin's own session.
+async function sendWinnerMails(lots, test = false) {
+  const { data } = await client.auth.getSession();
+  const response = await fetch('/api/winner-mails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token || ''}` },
+    body: JSON.stringify({ lots: lots.map((w) => w.id), request: crypto.randomUUID(), test }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (response.status === 404) throw new Error('Mailfunktionen er ikke udgivet endnu.');
+  if (!response.ok && !result.sent?.length) throw new Error(result.error || result.failed?.[0]?.error || 'Mailene kunne ikke sendes.');
+  return result;
+}
+
+function previewWinnerMail(w) {
+  const mail = winnerMail(w);
+  modal(`<p class="lp-eyebrow" style="color: var(--red-text)">Vindermail</p>
+    <h2 id="modal-title">${esc(mail.subject)}</h2>
+    <p class="lp-help">Til ${esc(w.email)} · svar går til signe@lykkeliga.dk${w.winner_mail_sent_at ? ` · sendt ${yesDate(w.winner_mail_sent_at)}` : ''}</p>
+    <iframe class="lp-mailpreview" title="Forhåndsvisning af vindermail" sandbox></iframe>
+    <div class="lp-actions">
+      <button class="lp-btn lp-btn--primary" type="button" id="mail-send">${w.winner_mail_sent_at ? 'Send igen' : 'Send til vinderen'}</button>
+      <button class="lp-btn lp-btn--secondary" type="button" id="mail-test">Send testmail til mig</button>
+    </div>`);
+  $('.lp-mailpreview').srcdoc = mail.html;
+  const run = (button, test) => async () => {
+    button.disabled = true;
+    try {
+      const result = await sendWinnerMails([w], test);
+      if (test) {
+        toast(`Testmail sendt til ${result.to}.`);
+        return;
+      }
+      closeModal();
+      await adminView();
+      toast(`Vindermail sendt til ${w.email}.`);
+    } catch (error) {
+      fail(error);
+    } finally {
+      button.disabled = false;
+    }
+  };
+  $('#mail-send').onclick = run($('#mail-send'), false);
+  $('#mail-test').onclick = run($('#mail-test'), true);
+}
+
+function confirmWinnerMails(list) {
+  modal(`<h2 id="modal-title">Send ${list.length} ${list.length === 1 ? 'vindermail' : 'vindermails'}?</h2>
+    <p class="lp-text">Vinderne får en mail om, hvad de har vundet, beløbet, og at der kommer en faktura. Svar går til signe@lykkeliga.dk.</p>
+    <ul class="lp-text" style="margin: 0; padding-left: 20px">${list.map((w) => `<li>${esc(w.full_name)} · ${esc(w.name)} · ${money(w.amount)}</li>`).join('')}</ul>
+    <p class="lp-help">Se en mail først med "Vis" i tabellen, hvis du vil kontrollere teksten.</p>
+    <div class="lp-actions"><button class="lp-btn lp-btn--primary" type="button" id="send-yes">Send mails</button><button class="lp-btn lp-btn--secondary" type="button" id="send-no">Fortryd</button></div>`);
+  $('#send-no').onclick = closeModal;
+  $('#send-yes').onclick = async () => {
+    $('#send-yes').disabled = true;
+    $('#send-yes').textContent = 'Sender …';
+    try {
+      const result = await sendWinnerMails(list);
+      closeModal();
+      await adminView();
+      toast(result.failed?.length ? `${result.sent.length} sendt. ${result.failed.length} fejlede: ${result.failed[0].error}` : `${result.sent.length} vindermails er sendt.`);
+    } catch (error) {
+      closeModal();
+      fail(error);
+    }
   };
 }
 
