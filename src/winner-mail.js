@@ -1,4 +1,5 @@
 // The mail a winner gets after Lykke Auktion. Used by /api/winner-mails and by the preview in admin.
+import { mailHeader, mailFooter } from './mail-layout.js';
 
 export const SENDER = 'Lykke Padel <padel@forms.lykkeliga.dk>';
 export const REPLY_TO = 'signe@lykkeliga.dk';
@@ -34,7 +35,7 @@ export function winnerMail(w) {
 <body style="margin:0;padding:0;background:#f3ead2">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3ead2"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fffce0;border-radius:12px;overflow:hidden">
-<tr><td style="background:#2b1513;padding:24px 32px;font:bold 22px/1.2 Arial,Helvetica,sans-serif;letter-spacing:1px;color:#fffce0">LYKKE PADEL</td></tr>
+${mailHeader}
 <tr><td style="padding:32px">
 <p style="margin:0 0 8px;font:bold 13px/1.4 Arial,Helvetica,sans-serif;letter-spacing:1px;text-transform:uppercase;color:#c42a1c">Lykke Auktion</p>
 <h1 style="margin:0 0 24px;font:bold 28px/1.2 Arial,Helvetica,sans-serif;color:#2b1513">Tillykke, du har vundet!</h1>
@@ -42,7 +43,7 @@ ${paragraphs.map(p).join('\n')}
 <p style="margin:0 0 24px;padding:14px 16px;background:#f3ead2;border-radius:8px;font:16px/1.55 Arial,Helvetica,sans-serif;color:#3a1c18;white-space:pre-line">${esc(w.billing_address)}</p>
 ${after.map(p).join('\n')}
 </td></tr>
-<tr><td style="padding:20px 32px;border-top:1px solid #e9dcc4;font:13px/1.5 Arial,Helvetica,sans-serif;color:#6b4a44">Lykke Padel · 2. april 2027 · Pakhus77, Aarhus<br>Arrangeret af LykkeLiga, powered by NORMAL</td></tr>
+${mailFooter(`Lykke Padel · 2. april 2027 · Pakhus77, Aarhus`)}
 </table></td></tr></table></body></html>`;
 
   return { subject, html, text };

@@ -1,4 +1,4 @@
-import { $, esc, money, toast, modal, closeModal, useForm, errorHtml, downloadCsv, paymentChecks, bindPaymentChecks, yesDate } from './ui.js';
+import { $, esc, money, toast, modal, closeModal, useForm, errorHtml, downloadCsv, field, paymentChecks, bindPaymentChecks, yesDate } from './ui.js';
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
@@ -61,7 +61,7 @@ export async function eventAdminView(client, { refresh }) {
         <td>${r.settlement === 'invoice' ? `<strong>${money(r.amount_due)}</strong>${'paid_at' in r && r.status === 'confirmed' ? paymentChecks(r.id, r) : ''}` : `${money(0)}<br><span class="lp-help">Rabatkode</span>`}</td>
         <td>${r.status === 'confirmed' ? '<span class="lp-pill lp-pill--lead">Bekræftet</span>' : '<span class="lp-pill lp-pill--quiet">Annulleret</span>'}</td>
         <td>${new Date(r.created_at).toLocaleDateString('da-DK')}</td>
-        <td>${r.status === 'confirmed' ? `<button class="lp-btn--text" type="button" data-cancel="${esc(r.id)}">Annuller</button>` : `<button class="lp-btn--text" type="button" data-delete-registration="${esc(r.id)}">Slet</button>`}</td>
+        <td><div class="lp-row-actions"><button class="lp-btn--text" type="button" data-edit-registration="${esc(r.id)}">Ret</button>${r.status === 'confirmed' ? `<button class="lp-btn--text" type="button" data-cancel="${esc(r.id)}">Annuller</button>` : `<button class="lp-btn--text" type="button" data-delete-registration="${esc(r.id)}">Slet</button>`}</div></td>
       </tr>`,
         )
         .join('')}</tbody></table></div>`
@@ -107,6 +107,10 @@ export async function eventAdminView(client, { refresh }) {
     };
   });
 
+  body.querySelectorAll('[data-edit-registration]').forEach((button) => {
+    button.onclick = () => editRegistration(client, rows.find((row) => row.id === button.dataset.editRegistration), refresh);
+  });
+
   body.querySelectorAll('[data-delete-registration]').forEach((button) => {
     button.onclick = () => {
       const r = rows.find((row) => row.id === button.dataset.deleteRegistration);
@@ -123,5 +127,46 @@ export async function eventAdminView(client, { refresh }) {
         toast('Tilmeldingen er slettet.');
       });
     };
+  });
+}
+
+// Admin correction of a participant: contact, partner, T-shirt sizes, company and consent.
+// The mail is the login and the kind sets the price, so they are shown but cannot be changed.
+function editRegistration(client, r, refresh) {
+  const pair = r.kind === 'pair';
+  const sizeField = (id, name, label, value) =>
+    `<div class="lp-field"><label for="${id}">${label}</label><select id="${id}" class="lp-input" name="${name}"><option value="">Ikke valgt</option>${SIZES.map((size) => `<option ${size === value ? 'selected' : ''}>${size}</option>`).join('')}</select></div>`;
+  const text = (id, name, label, value, extra = '') =>
+    `<div class="lp-field"><label for="${id}">${label}</label><input id="${id}" class="lp-input" name="${name}" value="${esc(value || '')}" ${extra}></div>`;
+  modal(`<p class="lp-eyebrow" style="color: var(--red-text)">${pair ? 'Makkerpar' : 'Individuel'} · Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</p>
+    <h2 id="modal-title">Ret tilmelding</h2>
+    <form id="edit-registration-form" class="lp-form" style="gap: 16px">
+      <div class="lp-field-row">${text('er-name', 'name', 'Navn', r.full_name, 'required minlength="2" maxlength="120"')}${text('er-phone', 'phone', 'Telefon', r.phone, 'required maxlength="30" type="tel"')}</div>
+      <div class="lp-field"><label for="er-email">Mail</label><input id="er-email" class="lp-input" value="${esc(r.email)}" readonly><p class="lp-help">Mailen er deltagerens login og kan ikke rettes her.</p></div>
+      <div class="lp-field"><label for="er-address">Faktureringsadresse</label><textarea id="er-address" class="lp-input" name="address" required minlength="5" maxlength="500">${esc(r.billing_address)}</textarea></div>
+      <div class="lp-field-row">${sizeField('er-shirt', 'shirt', 'T-shirt', r.shirt_size)}${text('er-company', 'company', 'Virksomhed', r.company, 'maxlength="120"')}</div>
+      ${pair ? `${text('er-partner', 'partner', 'Makkers navn', r.partner_name, 'required minlength="2" maxlength="120"')}
+      <div class="lp-field-row">${sizeField('er-pshirt', 'partnerShirt', 'Makkers T-shirt', r.partner_shirt_size)}${text('er-pcompany', 'partnerCompany', 'Makkers virksomhed', r.partner_company, 'maxlength="120"')}</div>` : ''}
+      <label class="lp-check"><input type="checkbox" name="publish" ${r.publish_consent ? 'checked' : ''}><span>Må nævnes i promovering</span></label>
+      <div class="lp-actions"><button class="lp-btn lp-btn--primary" type="submit">Gem ændringer</button><button class="lp-btn lp-btn--secondary" type="button" id="edit-registration-cancel">Fortryd</button></div>
+    </form>`);
+  $('#edit-registration-cancel').onclick = closeModal;
+  useForm($('#edit-registration-form'), async (form) => {
+    const { error } = await client.rpc('admin_update_registration', {
+      p_id: r.id,
+      p_name: field(form, 'name'),
+      p_phone: field(form, 'phone'),
+      p_address: field(form, 'address'),
+      p_partner: pair ? field(form, 'partner') : null,
+      p_shirt: field(form, 'shirt') || null,
+      p_partner_shirt: pair ? field(form, 'partnerShirt') || null : null,
+      p_company: field(form, 'company'),
+      p_partner_company: pair ? field(form, 'partnerCompany') : null,
+      p_publish: form.querySelector('[name=publish]').checked,
+    });
+    if (error) throw /PGRST202|could not find/i.test(`${error.code} ${error.message}`) ? new Error('Kør database/admin-edit-registration.sql i Supabase først.') : error;
+    closeModal();
+    await refresh();
+    toast(`Tilmeldingen for ${field(form, 'name')} er rettet.`);
   });
 }
