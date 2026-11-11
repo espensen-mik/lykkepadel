@@ -189,7 +189,7 @@ function checkout(order, draft) {
   };
 }
 
-const ticketUrl = (code) => `${location.origin}/admin#billet/${code}`;
+const ticketUrl = (code) => `${location.origin}/scan#${code}`;
 const kr = (value) => money(value);
 const date = (value) => new Date(value).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Copenhagen' });
 

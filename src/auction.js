@@ -541,6 +541,8 @@ async function adminView() {
       <button class="lp-btn lp-btn--primary" type="button" id="admin-login">Log ind med Google</button>
     </div></div>`;
     $('#admin-login').onclick = showAdminLogin;
+    // Older ticket QR codes point here; volunteers without admin access use the scanner.
+    if (scannedTicket) location.replace(`/scan#${encodeURIComponent(scannedTicket)}`);
     return;
   }
   const inTrash = trashed().length;

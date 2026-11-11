@@ -19,7 +19,7 @@ createServer(async(req,res)=>{
   if(pathname==='/api/winner-mails'){await winnerMailsHandler(req,res);return;}
   if(pathname==='/api/ticket-receipt'){await ticketReceiptHandler(req,res);return;}
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
-  const pages=['auktion','deltager','tilmelding','admin','administration','forsidetest','charity-turnering','charity-showkamp','om-lykkeliga','billetter','billet','handelsbetingelser','privatlivspolitik'];
+  const pages=['auktion','deltager','tilmelding','admin','administration','forsidetest','charity-turnering','charity-showkamp','om-lykkeliga','billetter','billet','handelsbetingelser','privatlivspolitik','scan'];
   const moved={'/om-dagen':'/forsidetest#program','/sagen':'/om-lykkeliga'};
   const target=moved[pathname.replace(/\/$/,'')];
   if(target){res.writeHead(307,{Location:target}).end();return;}
