@@ -4,6 +4,7 @@ import { resolve, extname, sep } from 'node:path';
 import { parseEnv } from 'node:util';
 import configHandler from '../api/auction-config.mjs';
 import winnerMailsHandler from '../api/winner-mails.mjs';
+import ticketReceiptHandler from '../api/ticket-receipt.mjs';
 if(!process.argv[2]) await import('./build.mjs');
 try {
  const local=parseEnv(await readFile(new URL('../.env.local',import.meta.url),'utf8'));
@@ -16,8 +17,9 @@ createServer(async(req,res)=>{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/api/auction-config'){configHandler(req,res);return;}
   if(pathname==='/api/winner-mails'){await winnerMailsHandler(req,res);return;}
+  if(pathname==='/api/ticket-receipt'){await ticketReceiptHandler(req,res);return;}
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405).end();return;}
-  const pages=['auktion','deltager','tilmelding','admin','administration','forsidetest','charity-turnering','charity-showkamp','om-lykkeliga'];
+  const pages=['auktion','deltager','tilmelding','admin','administration','forsidetest','charity-turnering','charity-showkamp','om-lykkeliga','billetter','billet','handelsbetingelser','privatlivspolitik'];
   const moved={'/om-dagen':'/forsidetest#program','/sagen':'/om-lykkeliga'};
   const target=moved[pathname.replace(/\/$/,'')];
   if(target){res.writeHead(307,{Location:target}).end();return;}

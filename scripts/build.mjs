@@ -28,6 +28,10 @@ const pages = {
   'charity-turnering': ['src/charity-turnering.html', 'turnering'],
   'charity-showkamp': ['src/charity-showkamp.html', 'showkamp'],
   'om-lykkeliga': ['src/om-lykkeliga.html', 'lykkeliga'],
+  billetter: ['src/tickets.html', 'showkamp'],
+  billet: ['src/tickets.html', 'showkamp'],
+  handelsbetingelser: ['src/handelsbetingelser.html', ''],
+  privatlivspolitik: ['src/privatlivspolitik.html', ''],
 };
 for (const [route, [template, current]] of Object.entries(pages)) {
   await mkdir(`dist/${route}`, { recursive: true });
@@ -35,7 +39,7 @@ for (const [route, [template, current]] of Object.entries(pages)) {
 }
 
 await build({
-  entryPoints: { auction: 'src/auction.js', front: 'src/front.js', header: 'src/header.js' },
+  entryPoints: { auction: 'src/auction.js', front: 'src/front.js', header: 'src/header.js', tickets: 'src/tickets.js' },
   outdir: 'dist',
   bundle: true,
   format: 'esm',

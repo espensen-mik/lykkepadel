@@ -141,6 +141,21 @@ I admin under Vindere kan man se hver mail, sende en testmail til sig selv, send
 
 `node --test tests/winner-mails-db.test.mjs tests/winner-mails.test.mjs` tester databasen, mailen og afsendelsen.
 
+## Billetter til Charity Showkamp
+
+Kør `tickets.sql` én gang efter `auction-setup.sql`. Den opretter billetsalget:
+
+- `ticket_orders` og `tickets`: ordrer og én unik billet med kode pr. person. Kun administratorer kan læse tabellerne.
+- Købere logger ikke ind. Hver ordre får et hemmeligt token, som giver adgang til billetsiden `/billet#<ordre>.<token>` og kvitteringen. Tokenet ligger i en privat tabel.
+- Prisen (200 kr.), kapaciteten (500) og højst 10 billetter pr. køb ligger i `auction_private.ticket_settings`. Serveren beregner beløbet. Ubetalte ordrer reserverer billetter i 30 minutter. Der kan højst være 3 ubetalte ordrer pr. mail.
+- Kvitteringer får fortløbende numre (`LP-2027-0001`). Testkøb har deres egen nummerserie (`TEST-0001`).
+- **Testtilstand** (`test_mode = true`, standard): betalingen simuleres, og billetterne er testbilletter, der ikke giver adgang og ikke tæller med i kapaciteten. Når QuickPay er koblet på, slås testtilstand fra.
+- Admin: oversigt, send kvittering igen, annuller ordre og tjek billetter ind. QR-koden på billetten åbner `/admin#billet/<kode>`, som tjekker billetten ind med det samme.
+
+Kvitteringsmailen sendes af `/api/ticket-receipt` gennem Resend én gang pr. ordre. Teksten findes i `src/ticket-receipt.js`.
+
+`node --test tests/tickets.test.mjs tests/ticket-receipt.test.mjs` tester billetsalget og mailen.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
