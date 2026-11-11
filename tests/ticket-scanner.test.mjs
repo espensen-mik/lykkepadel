@@ -13,7 +13,7 @@ create table auth.users(id uuid primary key,email text,email_confirmed_at timest
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
 for (const id of [admin, other]) await db.query('insert into auth.users values($1,$2,now(),false)', [id, `${id.slice(-2)}@example.test`]);
-for (const file of ['auction-setup.sql', 'tickets.sql', 'ticket-order-numbers.sql', 'ticket-scanner.sql']) await db.exec(await readFile(new URL(`../database/${file}`, import.meta.url), 'utf8'));
+for (const file of ['auction-setup.sql', 'tickets.sql', 'ticket-order-numbers.sql', 'ticket-scanner.sql', 'ticket-scanner-digits.sql']) await db.exec(await readFile(new URL(`../database/${file}`, import.meta.url), 'utf8'));
 await db.query('insert into auction_private.admins values($1)', [admin]);
 
 async function as(user, fn) {
@@ -42,7 +42,7 @@ test('only admins create, see and stop the day code', async () => {
   await assert.rejects(as(null, () => db.query('select public.new_scan_code(12)')), /permission denied/);
   await assert.rejects(as(admin, () => db.query('select public.new_scan_code(100)')), /1 og 72/);
   day = (await as(admin, () => one('select public.new_scan_code(12)'))).code;
-  assert.match(day, /^[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/);
+  assert.match(day, /^\d{4}-\d{4}-\d{4}$/);
   assert.equal((await as(admin, () => one('select public.scan_code_status()'))).active, true);
   assert.notEqual(await one('select scan_code_hash from auction_private.ticket_settings'), day, 'only the hash is stored');
 });
