@@ -89,7 +89,7 @@ function shop(draft = { quantity: 1 }) {
         </div>
         <div class="lp-field"><label for="tk-caddress">Firmaadresse</label><textarea id="tk-caddress" class="lp-input" name="address" autocomplete="street-address" maxlength="500">${esc(draft.address)}</textarea></div>
       </div>
-      <label class="lp-check"><input type="checkbox" name="terms" ${draft.terms ? 'checked' : ''}><span>Jeg accepterer <a href="/handelsbetingelser" target="_blank">handelsbetingelserne</a> og har læst <a href="/privatlivspolitik" target="_blank">privatlivspolitikken</a>.</span></label>
+      <label class="lp-check"><input type="checkbox" name="terms" ${draft.terms ? 'checked' : ''}><span>Jeg accepterer <a href="/handelsbetingelser#billetter" target="_blank">handelsbetingelserne</a> og har læst <a href="/privatlivspolitik" target="_blank">privatlivspolitikken</a>.</span></label>
       <div><button class="lp-btn lp-btn--primary lp-btn--large" type="submit">Gå til betaling</button></div>
     </form>
     <div id="ticket-summary" style="flex: 1 1 320px; display: flex">${summaryPanel(draft.quantity)}</div>

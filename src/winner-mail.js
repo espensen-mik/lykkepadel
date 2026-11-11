@@ -19,7 +19,7 @@ export function winnerMail(w) {
       ? `Du har vundet auktionen om at blive makker med ${w.name} i Lykke Auktion med et bud på ${kr(w.amount)}`
       : `Du har vundet "${w.name}" i Lykke Auktion med et bud på ${kr(w.amount)}`,
     prize,
-    `Du får en faktura fra LykkeLiga på ${kr(w.amount)} Den sendes til den faktureringsadresse, du har oplyst:`,
+    `Du får en faktura fra LykkeLiga på ${kr(w.amount)} med betaling inden 10 dage. Den sendes til den faktureringsadresse, du har oplyst:`,
   ];
   const after = [
     'Pengene går ubeskåret til LykkeLiga – et fællesskab for børn og unge med funktionsnedsættelser.',

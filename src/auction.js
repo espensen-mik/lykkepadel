@@ -362,6 +362,7 @@ function lotInfo(lot) {
         <div class="lp-info__block">
           <h2 class="lp-info__title">Vilkår</h2>
           <ul class="lp-terms">${termsFor(kind).map((t) => `<li>${t}</li>`).join('')}</ul>
+          <p class="lp-help"><a href="/handelsbetingelser#auktion">Læs de fulde handelsbetingelser</a></p>
         </div>
         <div class="lp-info__block">
           <h2 class="lp-info__title">Spørgsmål og svar</h2>
@@ -446,7 +447,7 @@ function confirmBid(lot, amount) {
     <p class="lp-text">Du byder <strong>${money(amount)}</strong> ${kindOf(lot) === 'item' ? `på ${esc(lot.name)}` : `på at blive makker med ${esc(lot.name)}`}.</p>
     <ul class="lp-terms">${keyTerms.map((t) => `<li>${t}</li>`).join('')}</ul>
     <form id="confirm-form" class="lp-form" style="gap: 18px">
-      <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer <a href="#vilkaar" id="confirm-terms-link">vilkårene for auktionen</a> og ved, at mit bud er bindende.</span></label>
+      <label class="lp-check"><input type="checkbox" name="terms" required><span>Jeg accepterer <a href="#vilkaar" id="confirm-terms-link">vilkårene</a> og <a href="/handelsbetingelser#auktion" target="_blank">handelsbetingelserne</a> for auktionen og ved, at mit bud er bindende.</span></label>
       <div class="lp-actions">
         <button class="lp-btn lp-btn--primary" type="submit">Bekræft ${money(amount)}</button>
         <button class="lp-btn lp-btn--secondary" type="button" id="confirm-cancel">Fortryd</button>

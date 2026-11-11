@@ -6,11 +6,11 @@ export const TERMS_VERSION = 'auktion-test-v1';
 const common = [
   'Et bud er bindende. Når du byder, accepterer du disse vilkår.',
   'Højeste bud, når auktionen slutter, vinder. Et afgivet bud kan ikke trækkes tilbage.',
-  'Der betales ikke på siden. LykkeLiga kontakter vinderen senest dagen efter auktionens afslutning.',
-  'Betaling sker mod faktura inden 7 dage.',
+  'Der betales ikke på siden. LykkeLiga sender vinderen en mail, når auktionen er slut.',
+  'Betaling sker mod faktura inden 10 dage.',
   'Hele beløbet går ubeskåret til LykkeLiga.',
   'Kan ikke ombyttes til kontanter.',
-  'Betaler vinderen ikke, går auktionen til næsthøjeste bud.',
+  'Betaler vinderen ikke efter en påmindelse, kan gevinsten gå til næsthøjeste bud.',
   'Dit synlige navn vises ved dine bud. Dine kontaktoplysninger vises aldrig offentligt.',
 ];
 
@@ -18,7 +18,7 @@ const byKind = {
   partner: [
     'Kun individuelle deltagere i Charity Turnering kan byde på padelmakkere.',
     'Makkerskabet gælder Charity Turnering 2. april 2027 i Pakhus77 og kan ikke overdrages.',
-    'Bliver makkeren forhindret i at deltage, kontakter LykkeLiga dig.',
+    'Bliver makkeren forhindret, finder LykkeLiga en tilsvarende erstatning. Ellers kan du få pengene tilbage.',
   ],
   item: ['Levering, afhentning og tidspunkt aftales direkte med LykkeLiga.'],
 };
@@ -30,7 +30,7 @@ export function termsFor(kind) {
 // The short version in the bid confirmation.
 export const keyTerms = [
   'Buddet er bindende og kan ikke trækkes tilbage.',
-  'Vinder du, sender LykkeLiga en faktura med betaling inden 7 dage.',
+  'Vinder du, sender LykkeLiga en faktura med betaling inden 10 dage.',
   'Hele beløbet går ubeskåret til LykkeLiga.',
 ];
 
@@ -44,7 +44,7 @@ export function stepsFor(kind) {
 
 export function faqFor(kind) {
   return [
-    ['Skal jeg betale, når jeg byder?', 'Nej. Der betales ikke på siden. Vinder du, sender LykkeLiga en faktura med betaling inden 7 dage.'],
+    ['Skal jeg betale, når jeg byder?', 'Nej. Der betales ikke på siden. Vinder du, sender LykkeLiga en faktura med betaling inden 10 dage.'],
     ['Er mit bud bindende?', 'Ja. Når du bekræfter et bud, accepterer du vilkårene, og buddet kan ikke trækkes tilbage.'],
     ['Hvem kan byde?', kind === 'partner' ? 'Kun individuelle deltagere i Charity Turnering kan byde på padelmakkere. Charity-produkterne kan alle med en gratis profil byde på.' : 'Alle med en gratis profil kan byde på charity-produkterne. Du opretter profilen med din mail på få minutter.'],
     ['Hvordan følger jeg med?', 'Siden opdateres automatisk, og budhistorikken viser alle bud. Vi sender endnu ikke besked, når du bliver overbudt, så kig forbi, inden auktionen slutter.'],
