@@ -29,6 +29,8 @@ Følg `GOOGLE-ADMIN.md`. Kør først `auction-google-admin.sql` for at begrænse
 
 Efter første Google-login med `mikael@lykkeliga.dk` køres `auction-admin.sql`. Den verificerer, at Google-identiteten findes, før rollen tildeles. Der skal ikke oprettes en adgangskode til administratoren.
 
+Flere administratorer tilføjes til `auction_private.admin_allowlist` (kun @lykkeliga.dk-adresser). `admin-signe.sql` tilføjer signe@lykkeliga.dk.
+
 Hold `auction_private` uden for Supabases eksponerede API-schemas.
 
 ## Synligt navn og offentlig budhistorik
