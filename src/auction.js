@@ -676,7 +676,7 @@ async function adminPeople(body) {
       .map(
         (p) => `<tr><td><strong>${esc(p.full_name)}</strong></td><td>${p.display_name ? esc(p.display_name) : '<span class="lp-help">Ikke valgt</span>'}</td><td>${esc(p.phone)}</td><td>${esc(p.billing_address)}</td>
       <td>${p.approved ? '<span class="lp-pill lp-pill--lead">Godkendt</span>' : '<span class="lp-pill lp-pill--quiet">Blokeret</span>'}</td>
-      <td><button class="lp-btn--text" type="button" data-approve="${esc(p.user_id)}" data-approved="${p.approved}">${p.approved ? 'Blokér' : 'Godkend'}</button></td></tr>`,
+      <td><div class="lp-row-actions"><button class="lp-btn--text" type="button" data-approve="${esc(p.user_id)}" data-approved="${p.approved}">${p.approved ? 'Blokér' : 'Godkend'}</button><button class="lp-iconbtn" type="button" data-delete-bidder="${esc(p.user_id)}" aria-label="Slet ${esc(p.full_name)}" title="Slet budgiver">${ICONS.trash}</button></div></td></tr>`,
       )
       .join('')}</tbody></table></div>`;
   body.querySelectorAll('[data-approve]').forEach((button) => {
@@ -694,6 +694,25 @@ async function adminPeople(body) {
       await adminView();
       toast('Budgiverens status er opdateret.');
     };
+  });
+  body.querySelectorAll('[data-delete-bidder]').forEach((button) => {
+    button.onclick = () => askDeleteBidder(people.find((p) => p.user_id === button.dataset.deleteBidder));
+  });
+}
+
+// Bidders with bids or a confirmed registration are protected; the database gives the reason.
+function askDeleteBidder(person) {
+  modal(`<h2 id="modal-title">Slet budgiver?</h2>
+    <p class="lp-text">${esc(person.full_name)}${person.display_name ? ` (${esc(person.display_name)})` : ''}</p>
+    <p class="lp-help">Budprofilen fjernes for altid. Budgivere, der har budt, eller som er tilmeldt turneringen, kan ikke slettes. Personen kan senere oprette en ny profil med samme mail.</p>
+    <form id="delete-bidder-form" class="lp-actions"><button class="lp-btn lp-btn--primary" type="submit">Slet budgiver</button><button class="lp-btn lp-btn--secondary" type="button" id="delete-bidder-keep">Behold</button></form>`);
+  $('#delete-bidder-keep').onclick = closeModal;
+  useForm($('#delete-bidder-form'), async () => {
+    const { error } = await client.rpc('delete_auction_bidder', { p_user: person.user_id });
+    if (error) throw missingFunction(error) ? new Error('Kør database/delete-people.sql i Supabase først.') : error;
+    closeModal();
+    await adminView();
+    toast(`${person.full_name} er slettet.`);
   });
 }
 
