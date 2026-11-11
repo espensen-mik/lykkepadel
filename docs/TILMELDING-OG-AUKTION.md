@@ -19,7 +19,7 @@ Der trækkes ingen penge, og testbud faktureres ikke. Tilmeldingerne og testbudd
 
 Kapaciteten er foreløbigt 70 pladser. Par bruger to pladser. Serveren tildeler pladser under en databaselås, så samtidige tilmeldinger ikke overbooker. Det skal afklares, om de 70 inkluderer de kendte/professionelle makkere, før den endelige kapacitet fastsættes. Rabat kan slås fra i admin uden at annullere allerede bekræftede tilmeldinger.
 
-`/auktion` bruger nu Supabase, når `REGISTRATION_ENABLED=true`. Kun publicerede auktioner vises. Kladdespillere skal publiceres i admin, før deltagere kan se dem. `/auktion?demo=1` og `/admin?demo=1` er fortsat særskilte browserdemoer og deler ikke data med Supabase.
+`/auktion` bruger nu Supabase, når `REGISTRATION_ENABLED=true`. Kun publicerede auktioner vises. Kladdespillere skal publiceres i admin, før deltagere kan se dem.
 
 ## Database og sikkerhed
 

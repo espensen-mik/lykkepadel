@@ -65,13 +65,6 @@ export function useForm(form, task) {
   });
 }
 
-export function setTestbar(text) {
-  const bar = $('#testbar');
-  if (!bar) return;
-  bar.textContent = text;
-  bar.hidden = !text;
-}
-
 // Header links change with the visitor's state.
 // The account button in the header: "Log ind" when logged out, "Min side" plus "Log ud" when logged in.
 export function setHeader({ loggedIn = false, text, href, onClick, logout = loggedIn } = {}) {
