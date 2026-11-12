@@ -238,6 +238,7 @@ textarea.lp-input{padding:14px 16px;min-height:96px;resize:vertical}
 .lp-table--stack td{vertical-align:top;line-height:1.45}
 .lp-table--stack .lp-pill{min-height:22px;padding:0 10px;font-size:12px;vertical-align:top}
 .lp-table--stack br + .lp-pill{margin-top:4px}
+.lp-table--stack .lp-row-actions .lp-btn--text{min-height:0;line-height:1.45}
 .lp-timeline{display:flex;flex-direction:column;border-top:2px solid var(--ink)}
 .lp-timeline div{display:grid;grid-template-columns:minmax(90px,160px) minmax(0,1fr);gap:24px;padding:22px 0;border-bottom:1px solid var(--sand)}
 .lp-timeline dt{font:400 36px/1 var(--font-display);color:var(--red-text)}

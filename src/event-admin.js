@@ -25,6 +25,12 @@ function exportRegistrations(rows) {
   downloadCsv('lykke-padel-tilmeldinger.csv', header, data);
 }
 
+// The line under a name: website title and company, without the company when the title already names it.
+const subline = (title, company) => {
+  const parts = [title, company && !(title || '').toLowerCase().includes(company.toLowerCase()) ? company : null].filter(Boolean);
+  return parts.length ? `<br><span class="lp-help">${parts.map(esc).join(' · ')}</span>` : '';
+};
+
 // Admin tab: event registrations, capacity and the temporary discount code.
 export async function eventAdminView(client, { refresh }) {
   const body = $('#admin-body');
@@ -58,14 +64,15 @@ export async function eventAdminView(client, { refresh }) {
   ${shown.length
     ? `
     <div class="lp-tablebox"><table class="lp-table lp-table--stack">
-      <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col">T-shirt og synlighed</th><th scope="col">Betaling</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
+      <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col">T-shirt</th><th scope="col">Website</th><th scope="col">Betaling</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
       <tbody>${shown
         .map(
           (r) => `<tr>
-        <td><strong>${esc(r.full_name)}</strong>${r.public_title ? `<br><span class="lp-help">${esc(r.public_title)}</span>` : ''}${r.partner_name ? `<br><span class="lp-help">& ${esc(r.partner_name)}${r.partner_public_title ? ` · ${esc(r.partner_public_title)}` : ''}</span>` : ''}<br><span class="lp-help">Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</span></td>
+        <td><strong>${esc(r.full_name)}</strong>${subline(r.public_title, r.company)}${r.partner_name ? `<br><strong>& ${esc(r.partner_name)}</strong>${subline(r.partner_public_title, r.partner_company)}` : ''}<br><span class="lp-help">Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</span></td>
         <td>${[r.email, r.phone].filter(Boolean).map(esc).join('<br>') || '<span class="lp-help">Ingen kontakt</span>'}${r.billing_address ? `<br><span class="lp-help">${esc(r.billing_address)}</span>` : ''}</td>
         <td>${r.kind === 'individual' ? 'Individuel · 1 plads' : 'Makkerpar · 2 pladser'}</td>
-        <td>${'shirt_size' in r ? `${r.shirt_size ? `T-shirt ${esc(r.shirt_size)}` : '<span class="lp-help">Ingen T-shirt valgt</span>'}${r.kind === 'pair' ? ` / ${r.partner_shirt_size ? esc(r.partner_shirt_size) : '<span class="lp-help">–</span>'}` : ''}${r.company ? `<br>${esc(r.company)}` : ''}${r.partner_company ? `<br><span class="lp-help">& ${esc(r.partner_company)}</span>` : ''}<br>${r.publish_consent ? '<span class="lp-pill lp-pill--outbid">Vises på websitet</span>' : '<span class="lp-help">Vises ikke på websitet</span>'}` : '<span class="lp-help">–</span>'}</td>
+        <td>${[r.shirt_size, ...(r.kind === 'pair' ? [r.partner_shirt_size] : [])].map((size) => (size ? esc(size) : '<span class="lp-help">–</span>')).join(' / ')}</td>
+        <td>${r.publish_consent ? '<span class="lp-pill lp-pill--outbid">Vises</span>' : '<span class="lp-pill lp-pill--quiet">Skjult</span>'}</td>
         <td>${r.settlement === 'invoice' ? `<strong>${money(r.amount_due)}</strong>${'paid_at' in r && r.status === 'confirmed' ? paymentChecks(r.id, r) : ''}` : r.settlement === 'invited' ? `<span class="lp-pill lp-pill--live">Inviteret</span><br><span class="lp-help">Gratis</span>` : `${money(0)}<br><span class="lp-help">Rabatkode</span>`}</td>
         <td>${r.status === 'confirmed' ? '<span class="lp-pill lp-pill--lead">Bekræftet</span>' : '<span class="lp-pill lp-pill--quiet">Annulleret</span>'}</td>
         <td>${new Date(r.created_at).toLocaleDateString('da-DK')}</td>
