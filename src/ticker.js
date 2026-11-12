@@ -1,6 +1,6 @@
 // The latest registered players, newest first. Shown in the red bar on the front page and the tournament page.
 export const LATEST_PLAYERS = [
-  { name: 'Torben Mouritzen', title: 'Stifter af NORMAL' },
+  { name: 'Torben Mouritsen', title: 'Stifter af NORMAL' },
   { name: 'Rikke Nielsen', title: 'Stifter af LykkeLiga' },
 ];
 
