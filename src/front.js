@@ -1,4 +1,4 @@
-import { LATEST_PLAYERS, playerHtml, startTicker } from './ticker.js';
+import { loadLatestPlayers, playerHtml, startTicker } from './ticker.js';
 import { countdownBar, countdownShort, isOver } from './countdown.js';
 import { isProcessed } from './image-crop.js';
 
@@ -18,11 +18,16 @@ const kr = (value) => `${new Intl.NumberFormat('da-DK').format(value)} kr.`;
 tick();
 setInterval(tick, 1000);
 
-// The red bar: the newest players, then the countdown.
-document.querySelectorAll('[data-latest-names]').forEach((el) => {
-  el.innerHTML = LATEST_PLAYERS.slice(0, 2).map((p) => `<li>${playerHtml(p)}</li>`).join('');
+// The red bar: the newest players, then the countdown. Without players it shows only the countdown.
+// No slide is active until the names are loaded, so the first one rolls in.
+document.querySelectorAll('[data-ticker]').forEach(async (root) => {
+  const players = await loadLatestPlayers(2500);
+  const names = root.querySelector('[data-latest-names]');
+  if (names && players.length) names.innerHTML = players.slice(0, 2).map((p) => `<li>${playerHtml(p)}</li>`).join('');
+  else names?.closest('.lp-countdown__slide')?.remove();
+  root.querySelector('.lp-countdown__slide')?.classList.add('is-active');
+  startTicker(root);
 });
-document.querySelectorAll('[data-ticker]').forEach(startTicker);
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 function image(value) {

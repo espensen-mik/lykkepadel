@@ -178,6 +178,17 @@ Kør derefter `ticket-scanner-digits.sql` én gang. Den ændrer koden til 12 cif
 
 `node --test tests/ticket-scanner.test.mjs` tester koden og indtjekningen.
 
+## Inviterede spillere og "Seneste tilmeldte spillere"
+
+Kør `invited-players.sql` én gang efter `invoice-payments.sql` og `admin-edit-registration.sql`.
+
+- Admin kan tilmelde en inviteret spiller under Tilmeldinger (`admin_add_invited_registration(...)`). Spilleren får ikke et login, betaler ikke og får ingen faktura, men optager pladser som alle andre. Mail, telefon og adresse er valgfri.
+- Tilmeldinger får en titel til websitet (`public_title`, fx "Stifter af NORMAL"), også for makkeren.
+- `admin_update_registration(...)` får tre nye parametre: titel, makkers titel og mail. Mailen kan kun rettes for inviterede spillere.
+- `latest_players()` kan kaldes af alle og giver kun navn og titel (eller virksomhed) på bekræftede spillere med "Må vises på websitet", nyeste først. Den bruges af de røde bjælker på forsiden og turneringssiden.
+
+`node --test tests/invited-players.test.mjs` tester funktionerne.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.

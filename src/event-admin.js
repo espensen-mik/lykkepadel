@@ -1,6 +1,8 @@
 import { $, esc, money, toast, modal, closeModal, useForm, errorHtml, downloadCsv, field, paymentChecks, bindPaymentChecks, yesDate } from './ui.js';
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SETTLEMENT = { invoice: 'Faktura', discount: 'Rabatkode', invited: 'Inviteret' };
+const missingSql = (error, file) => (/PGRST202|could not find/i.test(`${error.code} ${error.message}`) ? new Error(`Kør database/${file} i Supabase først.`) : error);
 
 // T-shirts to order: every confirmed player, partners included.
 function shirtCounts(rows) {
@@ -16,8 +18,8 @@ function shirtCounts(rows) {
 }
 
 function exportRegistrations(rows) {
-  const header = ['Reference', 'Status', 'Deltagelse', 'Pris', 'Afregning', 'Faktura sendt', 'Betalt', 'Navn', 'T-shirt', 'Virksomhed', 'Makker', 'Makkers T-shirt', 'Makkers virksomhed', 'Må nævnes i promovering', 'Mail', 'Telefon', 'Faktureringsadresse', 'Oprettet'];
-  const data = rows.map((r) => [r.id.slice(0, 8).toUpperCase(), r.status === 'confirmed' ? 'Bekræftet' : 'Annulleret', r.kind === 'pair' ? 'Makkerpar' : 'Individuel', r.amount_due, r.settlement === 'invoice' ? 'Faktura' : 'Rabatkode', yesDate(r.invoice_sent_at), yesDate(r.paid_at), r.full_name, r.shirt_size, r.company, r.partner_name, r.partner_shirt_size, r.partner_company, r.publish_consent ? 'Ja' : 'Nej', r.email, r.phone, r.billing_address, new Date(r.created_at).toLocaleDateString('da-DK')]);
+  const header = ['Reference', 'Status', 'Deltagelse', 'Pris', 'Afregning', 'Faktura sendt', 'Betalt', 'Navn', 'Titel på websitet', 'T-shirt', 'Virksomhed', 'Makker', 'Makkers titel', 'Makkers T-shirt', 'Makkers virksomhed', 'Må vises på websitet', 'Mail', 'Telefon', 'Faktureringsadresse', 'Oprettet'];
+  const data = rows.map((r) => [r.id.slice(0, 8).toUpperCase(), r.status === 'confirmed' ? 'Bekræftet' : 'Annulleret', r.kind === 'pair' ? 'Makkerpar' : 'Individuel', r.amount_due, SETTLEMENT[r.settlement] || r.settlement, yesDate(r.invoice_sent_at), yesDate(r.paid_at), r.full_name, r.public_title, r.shirt_size, r.company, r.partner_name, r.partner_public_title, r.partner_shirt_size, r.partner_company, r.publish_consent ? 'Ja' : 'Nej', r.email, r.phone, r.billing_address, new Date(r.created_at).toLocaleDateString('da-DK')]);
   downloadCsv('lykke-padel-tilmeldinger.csv', header, data);
 }
 
@@ -47,25 +49,28 @@ export async function eventAdminView(client, { refresh }) {
     })() : ''}
     <div class="lp-panel" style="gap: 10px; padding: 22px"><p class="lp-lot__meta">Rabatkoden "Rabat"</p><p style="margin: 0; font: 400 32px/1 var(--font-display)">${settings.coupon_active ? 'Aktiv' : 'Slået fra'}</p><div><button class="lp-btn lp-btn--secondary lp-btn--small" type="button" id="toggle-coupon" style="border-width: 3px">${settings.coupon_active ? 'Slå rabatkoden fra' : 'Slå rabatkoden til'}</button></div></div>
   </div>
+  <div class="lp-section-head" style="margin-bottom: 16px"><p class="lp-help">T-shirt, virksomhed og samtykke vælger deltagerne selv ved tilmelding og på Min side. Inviterede spillere tilmelder du her, og de betaler ikke.</p><div class="lp-actions"><button class="lp-btn lp-btn--primary" type="button" id="invite-player">Tilmeld inviteret spiller</button>${rows.length ? '<button class="lp-btn lp-btn--secondary" type="button" id="export-registrations">Download (CSV)</button>' : ''}</div></div>
   ${rows.length
-    ? `<div class="lp-section-head" style="margin-bottom: 16px"><p class="lp-help">T-shirt, virksomhed og samtykke vælger deltagerne selv ved tilmelding og på Min side.</p><button class="lp-btn lp-btn--secondary" type="button" id="export-registrations">Download tilmeldinger (CSV)</button></div>
+    ? `
     <div class="lp-tablebox"><table class="lp-table">
       <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col">T-shirt og synlighed</th><th scope="col">Betaling</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
       <tbody>${rows
         .map(
           (r) => `<tr>
-        <td><strong>${esc(r.full_name)}</strong>${r.partner_name ? `<br><span class="lp-help">& ${esc(r.partner_name)}</span>` : ''}<br><span class="lp-help">Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</span></td>
-        <td>${esc(r.email)}<br>${esc(r.phone)}<br><span class="lp-help">${esc(r.billing_address)}</span></td>
+        <td><strong>${esc(r.full_name)}</strong>${r.public_title ? `<br><span class="lp-help">${esc(r.public_title)}</span>` : ''}${r.partner_name ? `<br><span class="lp-help">& ${esc(r.partner_name)}${r.partner_public_title ? ` · ${esc(r.partner_public_title)}` : ''}</span>` : ''}<br><span class="lp-help">Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</span></td>
+        <td>${[r.email, r.phone].filter(Boolean).map(esc).join('<br>') || '<span class="lp-help">Ingen kontakt</span>'}${r.billing_address ? `<br><span class="lp-help">${esc(r.billing_address)}</span>` : ''}</td>
         <td>${r.kind === 'individual' ? 'Individuel · 1 plads' : 'Makkerpar · 2 pladser'}</td>
-        <td>${'shirt_size' in r ? `${r.shirt_size ? esc(r.shirt_size) : '<span class="lp-help">Ingen størrelse</span>'}${r.kind === 'pair' ? ` / ${r.partner_shirt_size ? esc(r.partner_shirt_size) : '<span class="lp-help">–</span>'}` : ''}${r.company ? `<br>${esc(r.company)}` : ''}${r.partner_company ? `<br><span class="lp-help">& ${esc(r.partner_company)}</span>` : ''}<br><span class="lp-help">${r.publish_consent ? 'Må nævnes' : 'Må ikke nævnes'}</span>` : '<span class="lp-help">–</span>'}</td>
-        <td>${r.settlement === 'invoice' ? `<strong>${money(r.amount_due)}</strong>${'paid_at' in r && r.status === 'confirmed' ? paymentChecks(r.id, r) : ''}` : `${money(0)}<br><span class="lp-help">Rabatkode</span>`}</td>
+        <td>${'shirt_size' in r ? `${r.shirt_size ? esc(r.shirt_size) : '<span class="lp-help">Ingen størrelse</span>'}${r.kind === 'pair' ? ` / ${r.partner_shirt_size ? esc(r.partner_shirt_size) : '<span class="lp-help">–</span>'}` : ''}${r.company ? `<br>${esc(r.company)}` : ''}${r.partner_company ? `<br><span class="lp-help">& ${esc(r.partner_company)}</span>` : ''}<br>${r.publish_consent ? '<span class="lp-pill lp-pill--lead">Vises på websitet</span>' : '<span class="lp-help">Vises ikke</span>'}` : '<span class="lp-help">–</span>'}</td>
+        <td>${r.settlement === 'invoice' ? `<strong>${money(r.amount_due)}</strong>${'paid_at' in r && r.status === 'confirmed' ? paymentChecks(r.id, r) : ''}` : r.settlement === 'invited' ? `<span class="lp-pill lp-pill--live">Inviteret</span><br><span class="lp-help">Gratis</span>` : `${money(0)}<br><span class="lp-help">Rabatkode</span>`}</td>
         <td>${r.status === 'confirmed' ? '<span class="lp-pill lp-pill--lead">Bekræftet</span>' : '<span class="lp-pill lp-pill--quiet">Annulleret</span>'}</td>
         <td>${new Date(r.created_at).toLocaleDateString('da-DK')}</td>
         <td><div class="lp-row-actions"><button class="lp-btn--text" type="button" data-edit-registration="${esc(r.id)}">Ret</button>${r.status === 'confirmed' ? `<button class="lp-btn--text" type="button" data-cancel="${esc(r.id)}">Annuller</button>` : `<button class="lp-btn--text" type="button" data-delete-registration="${esc(r.id)}">Slet</button>`}</div></td>
       </tr>`,
         )
         .join('')}</tbody></table></div>`
-    : '<div class="lp-empty"><p class="lp-text">Ingen tilmeldinger endnu. Nye tilmeldinger vises her, når mail og rabatkode er bekræftet.</p></div>'}`;
+    : '<div class="lp-empty"><p class="lp-text">Ingen tilmeldinger endnu. Nye tilmeldinger vises her, når mailen er bekræftet.</p></div>'}`;
+
+  $('#invite-player').onclick = () => playerForm(client, null, refresh);
 
   bindPaymentChecks(body, async (id, values) => {
     const { error: payError } = await client.rpc('set_registration_payment', { p_id: id, p_invoice_sent: null, p_paid: null, ...values });
@@ -108,7 +113,7 @@ export async function eventAdminView(client, { refresh }) {
   });
 
   body.querySelectorAll('[data-edit-registration]').forEach((button) => {
-    button.onclick = () => editRegistration(client, rows.find((row) => row.id === button.dataset.editRegistration), refresh);
+    button.onclick = () => playerForm(client, rows.find((row) => row.id === button.dataset.editRegistration), refresh);
   });
 
   body.querySelectorAll('[data-delete-registration]').forEach((button) => {
@@ -130,43 +135,55 @@ export async function eventAdminView(client, { refresh }) {
   });
 }
 
-// Admin correction of a participant: contact, partner, T-shirt sizes, company and consent.
-// The mail is the login and the kind sets the price, so they are shown but cannot be changed.
-function editRegistration(client, r, refresh) {
-  const pair = r.kind === 'pair';
+// One form for both a new invited player (r = null) and correcting an existing registration.
+// A paying participant's mail is their login and the kind sets the price, so neither can be changed.
+function playerForm(client, r, refresh) {
+  const isNew = !r;
+  const invited = isNew || r.settlement === 'invited';
   const sizeField = (id, name, label, value) =>
     `<div class="lp-field"><label for="${id}">${label}</label><select id="${id}" class="lp-input" name="${name}"><option value="">Ikke valgt</option>${SIZES.map((size) => `<option ${size === value ? 'selected' : ''}>${size}</option>`).join('')}</select></div>`;
-  const text = (id, name, label, value, extra = '') =>
-    `<div class="lp-field"><label for="${id}">${label}</label><input id="${id}" class="lp-input" name="${name}" value="${esc(value || '')}" ${extra}></div>`;
-  modal(`<p class="lp-eyebrow" style="color: var(--red-text)">${pair ? 'Makkerpar' : 'Individuel'} · Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</p>
-    <h2 id="modal-title">Ret tilmelding</h2>
-    <form id="edit-registration-form" class="lp-form" style="gap: 16px">
-      <div class="lp-field-row">${text('er-name', 'name', 'Navn', r.full_name, 'required minlength="2" maxlength="120"')}${text('er-phone', 'phone', 'Telefon', r.phone, 'required maxlength="30" type="tel"')}</div>
-      <div class="lp-field"><label for="er-email">Mail</label><input id="er-email" class="lp-input" value="${esc(r.email)}" readonly><p class="lp-help">Mailen er deltagerens login og kan ikke rettes her.</p></div>
-      <div class="lp-field"><label for="er-address">Faktureringsadresse</label><textarea id="er-address" class="lp-input" name="address" required minlength="5" maxlength="500">${esc(r.billing_address)}</textarea></div>
-      <div class="lp-field-row">${sizeField('er-shirt', 'shirt', 'T-shirt', r.shirt_size)}${text('er-company', 'company', 'Virksomhed', r.company, 'maxlength="120"')}</div>
-      ${pair ? `${text('er-partner', 'partner', 'Makkers navn', r.partner_name, 'required minlength="2" maxlength="120"')}
-      <div class="lp-field-row">${sizeField('er-pshirt', 'partnerShirt', 'Makkers T-shirt', r.partner_shirt_size)}${text('er-pcompany', 'partnerCompany', 'Makkers virksomhed', r.partner_company, 'maxlength="120"')}</div>` : ''}
-      <label class="lp-check"><input type="checkbox" name="publish" ${r.publish_consent ? 'checked' : ''}><span>Må nævnes i promovering</span></label>
-      <div class="lp-actions"><button class="lp-btn lp-btn--primary" type="submit">Gem ændringer</button><button class="lp-btn lp-btn--secondary" type="button" id="edit-registration-cancel">Fortryd</button></div>
+  const text = (id, name, label, value, extra = '', help = '') =>
+    `<div class="lp-field"><label for="${id}">${label}</label><input id="${id}" class="lp-input" name="${name}" value="${esc(value || '')}" ${extra}>${help ? `<p class="lp-help">${help}</p>` : ''}</div>`;
+  const partnerFields = (v = {}) => `${text('er-partner', 'partner', 'Makkers navn', v.partner_name, 'required minlength="2" maxlength="120"')}
+      ${text('er-ptitle', 'partnerTitle', 'Makkers titel på websitet', v.partner_public_title, 'maxlength="80"')}
+      <div class="lp-field-row">${sizeField('er-pshirt', 'partnerShirt', 'Makkers T-shirt', v.partner_shirt_size)}${text('er-pcompany', 'partnerCompany', 'Makkers virksomhed', v.partner_company, 'maxlength="120"')}</div>`;
+  const v = r || {};
+  modal(`<p class="lp-eyebrow" style="color: var(--red-text)">${isNew ? 'Inviteret spiller · gratis' : `${r.kind === 'pair' ? 'Makkerpar' : 'Individuel'}${invited ? ' · Inviteret' : ''} · Ref. ${esc(r.id.slice(0, 8).toUpperCase())}`}</p>
+    <h2 id="modal-title">${isNew ? 'Tilmeld inviteret spiller' : 'Ret tilmelding'}</h2>
+    <form id="player-form" class="lp-form" style="gap: 16px">
+      ${isNew ? `<div class="lp-field"><label for="er-kind">Deltagelse</label><select id="er-kind" class="lp-input" name="kind"><option value="individual">Individuel · 1 plads</option><option value="pair">Makkerpar · 2 pladser</option></select></div>` : ''}
+      <div class="lp-field-row">${text('er-name', 'name', 'Navn', v.full_name, 'required minlength="2" maxlength="120"')}${text('er-title', 'title', 'Titel på websitet', v.public_title, 'maxlength="80" placeholder="Fx Stifter af NORMAL"')}</div>
+      <div class="lp-field-row">${invited ? text('er-email', 'email', 'Mail (valgfri)', v.email, 'type="email" maxlength="254"') : `<div class="lp-field"><label for="er-email">Mail</label><input id="er-email" class="lp-input" value="${esc(v.email)}" readonly><p class="lp-help">Mailen er deltagerens login.</p></div>`}${text('er-phone', 'phone', invited ? 'Telefon (valgfri)' : 'Telefon', v.phone, `${invited ? '' : 'required '}maxlength="30" type="tel"`)}</div>
+      ${invited && isNew ? '' : `<div class="lp-field"><label for="er-address">${invited ? 'Adresse (valgfri)' : 'Faktureringsadresse'}</label><textarea id="er-address" class="lp-input" name="address" ${invited ? '' : 'required minlength="5"'} maxlength="500">${esc(v.billing_address || '')}</textarea></div>`}
+      <div class="lp-field-row">${sizeField('er-shirt', 'shirt', 'T-shirt', v.shirt_size)}${text('er-company', 'company', 'Virksomhed', v.company, 'maxlength="120"')}</div>
+      <div id="er-partner-fields">${!isNew && r.kind === 'pair' ? partnerFields(v) : ''}</div>
+      <label class="lp-check"><input type="checkbox" name="publish" ${v.publish_consent ? 'checked' : ''}><span>Må vises på websitet under "Seneste tilmeldte spillere" og nævnes i promovering</span></label>
+      <p class="lp-help">Under navnet vises titlen, eller virksomheden hvis der ikke er en titel.</p>
+      <div class="lp-actions"><button class="lp-btn lp-btn--primary" type="submit">${isNew ? 'Tilmeld spiller' : 'Gem ændringer'}</button><button class="lp-btn lp-btn--secondary" type="button" id="player-cancel">Fortryd</button></div>
     </form>`);
-  $('#edit-registration-cancel').onclick = closeModal;
-  useForm($('#edit-registration-form'), async (form) => {
-    const { error } = await client.rpc('admin_update_registration', {
-      p_id: r.id,
+  $('#player-cancel').onclick = closeModal;
+  const kind = $('#er-kind');
+  if (kind) kind.onchange = () => ($('#er-partner-fields').innerHTML = kind.value === 'pair' ? partnerFields() : '');
+  useForm($('#player-form'), async (form) => {
+    const pair = isNew ? kind.value === 'pair' : r.kind === 'pair';
+    const common = {
       p_name: field(form, 'name'),
+      p_title: field(form, 'title'),
       p_phone: field(form, 'phone'),
-      p_address: field(form, 'address'),
       p_partner: pair ? field(form, 'partner') : null,
+      p_partner_title: pair ? field(form, 'partnerTitle') : null,
       p_shirt: field(form, 'shirt') || null,
       p_partner_shirt: pair ? field(form, 'partnerShirt') || null : null,
       p_company: field(form, 'company'),
       p_partner_company: pair ? field(form, 'partnerCompany') : null,
       p_publish: form.querySelector('[name=publish]').checked,
-    });
-    if (error) throw /PGRST202|could not find/i.test(`${error.code} ${error.message}`) ? new Error('Kør database/admin-edit-registration.sql i Supabase først.') : error;
+    };
+    const { error } = isNew
+      ? await client.rpc('admin_add_invited_registration', { p_kind: kind.value, p_email: field(form, 'email'), ...common })
+      : await client.rpc('admin_update_registration', { p_id: r.id, p_address: field(form, 'address'), p_email: invited ? field(form, 'email') : null, ...common });
+    if (error) throw missingSql(error, 'invited-players.sql');
     closeModal();
     await refresh();
-    toast(`Tilmeldingen for ${field(form, 'name')} er rettet.`);
+    toast(isNew ? `${common.p_name} er tilmeldt som inviteret spiller.` : `Tilmeldingen for ${common.p_name} er rettet.`);
   });
 }
