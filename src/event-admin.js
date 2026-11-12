@@ -31,6 +31,12 @@ const subline = (title, company) => {
   return parts.length ? `<br><span class="lp-help">${parts.map(esc).join(' · ')}</span>` : '';
 };
 
+// Seats taken and left, e.g. "Tilmeldte 12 / 70 · 58 tilbage".
+const seatPanel = (label, taken, capacity, help) => {
+  const left = Math.max(capacity - taken, 0);
+  return `<div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">${label}</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${taken} / ${capacity}</p><p style="margin: 0; font: 700 15px var(--font-body); color: ${left ? 'var(--ink)' : 'var(--red-text)'}">${left ? `${left} ${left === 1 ? 'plads' : 'pladser'} tilbage` : 'Fuldt'}</p><p class="lp-help">${help}</p></div>`;
+};
+
 // Admin tab: event registrations, capacity and the temporary discount code.
 export async function eventAdminView(client, { refresh }) {
   const body = $('#admin-body');
@@ -46,8 +52,11 @@ export async function eventAdminView(client, { refresh }) {
   const cancelled = rows.filter((r) => r.status !== 'confirmed').length;
   const shown = showCancelled ? rows : rows.filter((r) => r.status === 'confirmed');
   body.innerHTML = `
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px">
-    <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Tilmeldte pladser</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${settings.seats_taken} / ${settings.capacity}</p><p class="lp-help">Makkerpar tæller som to pladser.</p></div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px">
+    ${'invited_capacity' in settings
+      ? `${seatPanel('Tilmeldte', settings.paid_taken, settings.capacity, 'Betalende og rabatkode. Makkerpar tæller som to pladser.')}
+    ${seatPanel('Inviterede', settings.invited_taken, settings.invited_capacity, `Reserveret til inviterede spillere. I alt ${settings.seats_taken} af ${settings.total_capacity} pladser.`)}`
+      : `<div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Tilmeldte pladser</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${settings.seats_taken} / ${settings.capacity}</p><p class="lp-help">Kør database/seats-96.sql for at dele pladserne i tilmeldte og inviterede.</p></div>`}
     ${rows.some((r) => 'paid_at' in r) ? (() => {
       const billable = rows.filter((r) => r.status === 'confirmed' && r.settlement === 'invoice');
       const unpaid = billable.filter((r) => !r.paid_at);

@@ -189,6 +189,17 @@ Kør `invited-players.sql` én gang efter `invoice-payments.sql` og `admin-edit-
 
 `node --test tests/invited-players.test.mjs` tester funktionerne.
 
+## 96 spillere: 70 tilmeldte og 26 inviterede
+
+Kør `seats-96.sql` én gang efter `invited-players.sql`.
+
+- `event_settings.capacity` (70) er pladserne til tilmelding, både betalende og med rabatkode. Den nye `invited_capacity` (26) er pladserne til inviterede spillere. I alt 96.
+- Tilmelding tæller nu kun tilmeldte pladser, så inviterede spillere ikke tager pladser fra de 70.
+- En trigger stopper nye inviterede spillere, når de 26 pladser er brugt.
+- `event_admin_settings()` giver også `paid_taken`, `invited_taken`, `invited_capacity` og `total_capacity`, så admin kan vise, hvor mange pladser der er tilbage af hver slags.
+
+`node --test tests/seats-96.test.mjs` tester pladserne.
+
 ## Program
 
 Kør `program.sql` én gang efter `auction-setup.sql`. Den opretter tabellen `program_items` med det nuværende program og to admin-funktioner, `save_program_item(...)` og `delete_program_item(id)`.
