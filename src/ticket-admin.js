@@ -22,6 +22,9 @@ function resultHtml(r) {
     ${r.result === 'ok' ? `<div style="margin-top: 12px"><button class="lp-btn lp-btn--secondary lp-btn--small" type="button" data-undo="${esc(r.code)}" style="background: #fff">Fortryd</button></div>` : ''}</div>`;
 }
 
+// Cancelled and expired orders are hidden from the list until the admin asks to see them. They are never deleted (bookkeeping).
+let showClosed = false;
+
 export async function ticketAdminView(client, body, { refresh, code } = {}) {
   const [orders, info] = await Promise.all([
     client.from('ticket_orders').select('*, tickets(code, status, checked_in_at)').order('created_at', { ascending: false }),
@@ -37,6 +40,8 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
   const real = rows.filter((o) => !o.is_test && o.status === 'paid');
   const sold = real.reduce((sum, o) => sum + o.quantity, 0);
   const checkedIn = real.flatMap((o) => o.tickets).filter((t) => t.checked_in_at).length;
+  const closedCount = rows.filter((o) => !['paid', 'pending'].includes(o.status)).length;
+  const shown = showClosed ? rows : rows.filter((o) => ['paid', 'pending'].includes(o.status));
 
   body.innerHTML = `
   ${settings.test_mode ? '<div class="lp-notice" style="margin-bottom: 24px"><span><strong>Testtilstand.</strong> Køb betales ikke rigtigt, og billetterne giver ikke adgang. Betaling med QuickPay slås til, når aftalen er klar.</span></div>' : ''}
@@ -66,9 +71,10 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
   </section>
   ${rows.length
     ? `<div class="lp-section-head" style="margin-bottom: 16px"><p class="lp-help">Kvitteringen gælder som faktura. Annullering refunderer ikke automatisk.</p><button class="lp-btn lp-btn--secondary" type="button" id="export-tickets">Download ordrer (CSV)</button></div>
+    ${closedCount ? `<label class="lp-check lp-check--small" style="margin-bottom: 12px"><input type="checkbox" id="show-closed" ${showClosed ? 'checked' : ''}><span>Vis annullerede og udløbne (${closedCount})</span></label>` : ''}
     <div class="lp-tablebox"><table class="lp-table">
       <thead><tr><th scope="col">Kvittering</th><th scope="col">Køber</th><th scope="col" class="num">Billetter</th><th scope="col" class="num">Beløb</th><th scope="col">Status</th><th scope="col">Købt</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
-      <tbody>${rows
+      <tbody>${shown
         .map(
           (o) => `<tr>
         <td><strong>${receiptNo(o)}</strong>${o.order_no ? `<br><span class="lp-help">Ordre ${esc(o.order_no)}</span>` : ''}${o.is_test ? '<br><span class="lp-pill lp-pill--quiet">Test</span>' : ''}</td>
@@ -82,6 +88,11 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
         )
         .join('')}</tbody></table></div>`
     : '<div class="lp-empty"><p class="lp-text">Ingen billetkøb endnu.</p></div>'}`;
+
+  $('#show-closed')?.addEventListener('change', (event) => {
+    showClosed = event.currentTarget.checked;
+    refresh();
+  });
 
   const checkIn = async (value, undo = false) => {
     const target = $('#checkin-result');
