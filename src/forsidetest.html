@@ -59,15 +59,12 @@
     </div>
   </section>
 
-  <!-- The red bar takes turns showing the countdown and the latest players. Add or remove <li> lines to change the names. -->
+  <!-- The red bar takes turns showing the latest players and the countdown. The names are in src/ticker.js. -->
   <section class="lp-countdown" aria-label="Nedtælling og seneste tilmeldte spillere">
     <div class="lp-wrap lp-countdown__viewport" data-ticker>
       <div class="lp-countdown__inner lp-countdown__slide is-active" data-hold="7000">
         <p class="lp-countdown__label">Seneste tilmeldte spillere</p>
-        <ul class="lp-countdown__names">
-          <li><strong>Torben Mouritzen</strong><span>Stifter af NORMAL</span></li>
-          <li><strong>Rikke Nielsen</strong><span>Stifter af LykkeLiga</span></li>
-        </ul>
+        <ul class="lp-countdown__names" data-latest-names></ul>
       </div>
       <div class="lp-countdown__inner lp-countdown__slide" data-hold="7000">
         <p class="lp-countdown__label">Lykke Padel begynder om</p>
