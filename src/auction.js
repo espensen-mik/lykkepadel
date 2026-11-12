@@ -7,6 +7,7 @@ import { imageEditor, isProcessed } from './image-crop.js';
 import { winnerMail } from './winner-mail.js';
 import { ticketAdminView } from './ticket-admin.js';
 import { programAdminView } from './program-admin.js';
+import { KIND_HINTS } from './ticker.js';
 import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, rememberAdmin, paymentChecks, bindPaymentChecks, yesDate, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
@@ -130,7 +131,7 @@ function lotCard(lot, index) {
     <a class="lp-lot__link" href="${link(lot.id)}">
       <div class="lp-lot__media">
         <img class="lp-lot__img${duo(lot)}" src="${esc(safeImage(lot.image_url))}" alt="${esc(lot.name)}" loading="${index < 3 ? 'eager' : 'lazy'}">
-        <p class="lp-lot__tag">${esc(lot.category)}</p>
+        <p class="lp-lot__tag lp-hint" data-hint="${KIND_HINTS[kindOf(lot)]}">${esc(lot.category)}</p>
       </div>
       <div class="lp-lot__body">
         <h3 class="lp-lot__name">${esc(lot.name)}</h3>
@@ -202,7 +203,7 @@ function listing() {
     <div class="lp-wrap lp-section">
       <div class="lp-section-head">
         <h2 class="lp-display">Auktionerne</h2>
-        ${kinds.length > 1 ? `<div class="lp-chips" role="group" aria-label="Filtrer auktioner">${['Alle', ...kinds].map((k) => `<button class="lp-chip" type="button" data-filter="${k}" aria-pressed="${k === filter}">${k === 'Alle' ? 'Alle' : KINDS[k]}</button>`).join('')}</div>` : ''}
+        ${kinds.length > 1 ? `<div class="lp-chips" role="group" aria-label="Filtrer auktioner">${['Alle', ...kinds].map((k) => `<button class="lp-chip${KIND_HINTS[k] ? ' lp-hint' : ''}" type="button" data-filter="${k}" aria-pressed="${k === filter}"${KIND_HINTS[k] ? ` data-hint="${KIND_HINTS[k]}" aria-description="${KIND_HINTS[k]}"` : ''}>${k === 'Alle' ? 'Alle' : KINDS[k]}</button>`).join('')}</div>` : ''}
       </div>
       <p class="lp-text" style="margin-top: 20px; max-width: 680px">Alle med en gratis profil kan byde på charity-produkterne. Padelmakkere kan kun bydes på af individuelle deltagere i Charity Turnering. Du byder i hele 500 kr., og højeste bud, når tiden udløber, vinder.</p>
       ${visible.length
