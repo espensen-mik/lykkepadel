@@ -234,6 +234,10 @@ textarea.lp-input{padding:14px 16px;min-height:96px;resize:vertical}
 .lp-table th{text-align:left;font:700 13px var(--font-body);color:var(--ink-muted);padding:14px 12px;border-bottom:2px solid var(--ink)}
 .lp-table td{padding:14px 12px;border-bottom:1px solid var(--sand);vertical-align:middle;font-variant-numeric:tabular-nums}
 .lp-table .num{text-align:right}
+/* Admin lists: everything starts on the same top line, and pills are line height so they don't push rows apart. */
+.lp-table--stack td{vertical-align:top;line-height:1.45}
+.lp-table--stack .lp-pill{min-height:22px;padding:0 10px;font-size:12px;vertical-align:top}
+.lp-table--stack br + .lp-pill{margin-top:4px}
 .lp-timeline{display:flex;flex-direction:column;border-top:2px solid var(--ink)}
 .lp-timeline div{display:grid;grid-template-columns:minmax(90px,160px) minmax(0,1fr);gap:24px;padding:22px 0;border-bottom:1px solid var(--sand)}
 .lp-timeline dt{font:400 36px/1 var(--font-display);color:var(--red-text)}

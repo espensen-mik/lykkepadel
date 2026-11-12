@@ -72,7 +72,7 @@ export async function ticketAdminView(client, body, { refresh, code } = {}) {
   ${rows.length
     ? `<div class="lp-section-head" style="margin-bottom: 16px"><p class="lp-help">Kvitteringen gælder som faktura. Annullering refunderer ikke automatisk.</p><button class="lp-btn lp-btn--secondary" type="button" id="export-tickets">Download ordrer (CSV)</button></div>
     ${closedCount ? `<label class="lp-check lp-check--small" style="margin-bottom: 12px"><input type="checkbox" id="show-closed" ${showClosed ? 'checked' : ''}><span>Vis annullerede og udløbne (${closedCount})</span></label>` : ''}
-    <div class="lp-tablebox"><table class="lp-table">
+    <div class="lp-tablebox"><table class="lp-table lp-table--stack">
       <thead><tr><th scope="col">Kvittering</th><th scope="col">Køber</th><th scope="col" class="num">Billetter</th><th scope="col" class="num">Beløb</th><th scope="col">Status</th><th scope="col">Købt</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
       <tbody>${shown
         .map(
