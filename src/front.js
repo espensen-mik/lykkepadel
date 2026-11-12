@@ -1,4 +1,4 @@
-import { loadLatestPlayers, playerHtml, startTicker } from './ticker.js';
+import { loadLatestPlayers, playerHtml, startTicker, KIND_HINTS } from './ticker.js';
 import { countdownBar, countdownShort, isOver } from './countdown.js';
 import { isProcessed } from './image-crop.js';
 
@@ -40,7 +40,7 @@ function image(value) {
 }
 
 const card = (lot) => `<a class="lp-player" href="/auktion#spiller/${encodeURIComponent(lot.id)}">
-  <div class="lp-lot__media"><img src="${esc(image(lot.image_url))}" alt="${esc(lot.name)}" loading="lazy"${isProcessed(lot.image_url) ? ' class="is-duotone"' : ''}><p class="lp-lot__tag">${esc(lot.category)}</p></div>
+  <div class="lp-lot__media"><img src="${esc(image(lot.image_url))}" alt="${esc(lot.name)}" loading="lazy"${isProcessed(lot.image_url) ? ' class="is-duotone"' : ''}><p class="lp-lot__tag lp-hint" data-hint="${KIND_HINTS[lot.kind === 'item' ? 'item' : 'partner']}">${esc(lot.category)}</p></div>
   <h3 class="lp-lot__name">${esc(lot.name)}</h3>
   <div class="lp-lot__bid">
     <div>

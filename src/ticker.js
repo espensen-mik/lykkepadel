@@ -1,3 +1,9 @@
+// Hover tips on the auction categories (filter buttons and the tag on each card).
+export const KIND_HINTS = {
+  partner: 'Kun for individuelle deltagere i Charity Turnering. Du skal være tilmeldt for at byde.',
+  item: 'Alle med en gratis profil kan byde.',
+};
+
 // The latest players who may be shown on the website, newest first: [{ name, title }].
 // Admins choose who is shown ("Må vises på websitet"). Returns [] if the list cannot be loaded in time.
 let loading;
