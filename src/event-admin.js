@@ -1,6 +1,8 @@
 import { $, esc, money, toast, modal, closeModal, useForm, errorHtml, downloadCsv, field, paymentChecks, bindPaymentChecks, yesDate } from './ui.js';
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+// Cancelled registrations are hidden from the list until the admin asks to see them.
+let showCancelled = false;
 const SETTLEMENT = { invoice: 'Faktura', discount: 'Rabatkode', invited: 'Inviteret' };
 const missingSql = (error, file) => (/PGRST202|could not find/i.test(`${error.code} ${error.message}`) ? new Error(`Kør database/${file} i Supabase først.`) : error);
 
@@ -35,6 +37,8 @@ export async function eventAdminView(client, { refresh }) {
     return;
   }
 
+  const cancelled = rows.filter((r) => r.status !== 'confirmed').length;
+  const shown = showCancelled ? rows : rows.filter((r) => r.status === 'confirmed');
   body.innerHTML = `
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px">
     <div class="lp-panel" style="gap: 6px; padding: 22px"><p class="lp-lot__meta">Tilmeldte pladser</p><p style="margin: 0; font: 400 48px/1 var(--font-display)">${settings.seats_taken} / ${settings.capacity}</p><p class="lp-help">Makkerpar tæller som to pladser.</p></div>
@@ -50,11 +54,12 @@ export async function eventAdminView(client, { refresh }) {
     <div class="lp-panel" style="gap: 10px; padding: 22px"><p class="lp-lot__meta">Rabatkoden "Rabat"</p><p style="margin: 0; font: 400 32px/1 var(--font-display)">${settings.coupon_active ? 'Aktiv' : 'Slået fra'}</p><div><button class="lp-btn lp-btn--secondary lp-btn--small" type="button" id="toggle-coupon" style="border-width: 3px">${settings.coupon_active ? 'Slå rabatkoden fra' : 'Slå rabatkoden til'}</button></div></div>
   </div>
   <div class="lp-section-head" style="margin-bottom: 16px"><p class="lp-help">T-shirt, virksomhed og samtykke vælger deltagerne selv ved tilmelding og på Min side. Inviterede spillere tilmelder du her, og de betaler ikke.</p><div class="lp-actions"><button class="lp-btn lp-btn--primary" type="button" id="invite-player">Tilmeld inviteret spiller</button>${rows.length ? '<button class="lp-btn lp-btn--secondary" type="button" id="export-registrations">Download (CSV)</button>' : ''}</div></div>
-  ${rows.length
+  ${cancelled ? `<label class="lp-check lp-check--small" style="margin-bottom: 12px"><input type="checkbox" id="show-cancelled" ${showCancelled ? 'checked' : ''}><span>Vis annullerede (${cancelled})</span></label>` : ''}
+  ${shown.length
     ? `
     <div class="lp-tablebox"><table class="lp-table">
       <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col">T-shirt og synlighed</th><th scope="col">Betaling</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
-      <tbody>${rows
+      <tbody>${shown
         .map(
           (r) => `<tr>
         <td><strong>${esc(r.full_name)}</strong>${r.public_title ? `<br><span class="lp-help">${esc(r.public_title)}</span>` : ''}${r.partner_name ? `<br><span class="lp-help">& ${esc(r.partner_name)}${r.partner_public_title ? ` · ${esc(r.partner_public_title)}` : ''}</span>` : ''}<br><span class="lp-help">Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</span></td>
@@ -68,7 +73,12 @@ export async function eventAdminView(client, { refresh }) {
       </tr>`,
         )
         .join('')}</tbody></table></div>`
-    : '<div class="lp-empty"><p class="lp-text">Ingen tilmeldinger endnu. Nye tilmeldinger vises her, når mailen er bekræftet.</p></div>'}`;
+    : `<div class="lp-empty"><p class="lp-text">${rows.length ? 'Ingen aktive tilmeldinger.' : 'Ingen tilmeldinger endnu. Nye tilmeldinger vises her, når mailen er bekræftet.'}</p></div>`}`;
+
+  $('#show-cancelled')?.addEventListener('change', (event) => {
+    showCancelled = event.currentTarget.checked;
+    refresh();
+  });
 
   $('#invite-player').onclick = () => playerForm(client, null, refresh);
 

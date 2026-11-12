@@ -28,7 +28,10 @@ let isAdmin = false;
 let lots = [];
 const typeParam = new URLSearchParams(location.search).get('type');
 let filter = typeParam === 'makkere' ? 'partner' : typeParam === 'produkter' ? 'item' : 'Alle';
-let adminTab = 'lots';
+let adminTab = 'registrations';
+// The admin has three areas that follow the day; the auction area has its own sub-tabs.
+const AUCTION_TABS = ['lots', 'people', 'winners', 'trash'];
+let auctionTab = 'lots';
 let polling = false;
 
 setupModal();
@@ -546,24 +549,30 @@ async function adminView() {
     return;
   }
   const inTrash = trashed().length;
-  const tabs = [
-    ['registrations', 'Tilmeldinger'],
-    ['tickets', 'Billetter'],
+  const inAuction = AUCTION_TABS.includes(adminTab);
+  if (inAuction) auctionTab = adminTab;
+  const areas = [
+    ['registrations', 'Turnering', 'Tilmeldinger, inviterede spillere og betaling', !inAuction && adminTab === 'registrations'],
+    ['tickets', 'Showkamp', 'Billetter, indtjekning og scanner', adminTab === 'tickets'],
+    [auctionTab, 'Auktion', 'Auktioner, budgivere, vindere og papirkurv', inAuction],
+  ];
+  const subTabs = [
     ['lots', 'Auktioner'],
     ['people', 'Budgivere'],
     ['winners', 'Vindere'],
     ['trash', `${ICONS.trash}<span>Papirkurv</span>${inTrash ? `<span class="lp-tabs__count">${inTrash}</span>` : ''}`],
   ];
-  main.innerHTML = `<div class="lp-wrap" style="padding-block: 48px var(--space-9); display: flex; flex-direction: column; gap: 32px">
-    <div class="lp-section-head">
-      <h1 class="lp-display lp-display--s" style="color: var(--ink)">Administration</h1>
+  main.innerHTML = `<div class="lp-wrap" style="padding-block: 48px var(--space-9); display: flex; flex-direction: column; gap: 28px">
+    <h1 class="lp-display lp-display--s" style="color: var(--ink); margin: 0">Administration</h1>
+    <nav class="lp-tabs lp-tabs--areas" aria-label="Administration">${areas.map(([key, label, hint, current]) => `<a href="#" data-tab="${key}" title="${hint}" ${current ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+    ${inAuction ? `<div class="lp-section-head">
+      <nav class="lp-subtabs" aria-label="Auktion">${subTabs.map(([key, label]) => `<a href="#" data-tab="${key}" ${key === adminTab ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
       <div class="lp-actions"><a class="lp-btn lp-btn--secondary" href="${link()}">Se auktionen</a><button class="lp-btn lp-btn--primary" type="button" id="new-lot">Ny auktion</button></div>
     </div>
-    <p class="lp-help">Auktioner med bud kan ikke redigeres. Tider vises i dansk tid.</p>
-    <nav class="lp-tabs" aria-label="Administration">${tabs.map(([key, label]) => `<a href="#" data-tab="${key}" ${key === adminTab ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+    <p class="lp-help" style="margin-top: -12px">Auktioner med bud kan ikke redigeres. Tider vises i dansk tid.</p>` : ''}
     <div id="admin-body"></div>
   </div>`;
-  $('#new-lot').onclick = () => editLot();
+  $('#new-lot')?.addEventListener('click', () => editLot());
   main.querySelectorAll('[data-tab]').forEach((tab) => {
     tab.onclick = (event) => {
       event.preventDefault();
