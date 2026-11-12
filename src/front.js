@@ -17,6 +17,37 @@ const kr = (value) => `${new Intl.NumberFormat('da-DK').format(value)} kr.`;
 tick();
 setInterval(tick, 1000);
 
+// The red bar takes turns between its slides. Each slide stays for its data-hold time,
+// then rolls down and out while the next rolls in from above. Pauses while the tab is hidden.
+function ticker(root) {
+  const slides = [...root.querySelectorAll('.lp-countdown__slide')];
+  if (slides.length < 2) return;
+  let index = 0;
+  let timer;
+  const show = (i) => slides.forEach((s, n) => s.setAttribute('aria-hidden', String(n !== i)));
+  const next = () => {
+    const current = slides[index];
+    index = (index + 1) % slides.length;
+    const incoming = slides[index];
+    // Put the incoming slide above the bar without animating, so it can roll in from there.
+    incoming.classList.add('is-reset');
+    incoming.classList.remove('is-leaving');
+    void incoming.offsetWidth;
+    incoming.classList.remove('is-reset');
+    current.classList.replace('is-active', 'is-leaving');
+    incoming.classList.add('is-active');
+    show(index);
+    schedule();
+  };
+  const schedule = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => (document.hidden ? schedule() : next()), Number(slides[index].dataset.hold) || 6000);
+  };
+  show(0);
+  schedule();
+}
+document.querySelectorAll('[data-ticker]').forEach(ticker);
+
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 function image(value) {
   try {

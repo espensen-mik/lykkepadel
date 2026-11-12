@@ -59,11 +59,21 @@
     </div>
   </section>
 
-  <section class="lp-countdown" aria-label="Nedtælling til Lykke Padel">
-    <div class="lp-wrap lp-countdown__inner">
-      <p class="lp-countdown__label">Lykke Padel begynder om</p>
-      <div class="lp-countdown__time" data-countdown="bar" data-ends="2027-04-02T12:30:00+02:00" role="timer"></div>
-      <p class="lp-countdown__meta">2. april 2027 · Pakhus77, Aarhus</p>
+  <!-- The red bar takes turns showing the countdown and the latest players. Add or remove <li> lines to change the names. -->
+  <section class="lp-countdown" aria-label="Nedtælling og seneste tilmeldte spillere">
+    <div class="lp-wrap lp-countdown__viewport" data-ticker>
+      <div class="lp-countdown__inner lp-countdown__slide is-active" data-hold="7000">
+        <p class="lp-countdown__label">Seneste tilmeldte spillere</p>
+        <ul class="lp-countdown__names">
+          <li><strong>Torben Mouritzen</strong><span>Stifter af NORMAL</span></li>
+          <li><strong>Rikke Nielsen</strong><span>Stifter af LykkeLiga</span></li>
+        </ul>
+      </div>
+      <div class="lp-countdown__inner lp-countdown__slide" data-hold="7000">
+        <p class="lp-countdown__label">Lykke Padel begynder om</p>
+        <div class="lp-countdown__time" data-countdown="bar" data-ends="2027-04-02T12:30:00+02:00" role="timer"></div>
+        <p class="lp-countdown__meta">2. april 2027 · Pakhus77, Aarhus</p>
+      </div>
     </div>
   </section>
 
