@@ -6,6 +6,7 @@ import { eventAdminView } from './event-admin.js';
 import { imageEditor, isProcessed } from './image-crop.js';
 import { winnerMail } from './winner-mail.js';
 import { ticketAdminView } from './ticket-admin.js';
+import { programAdminView } from './program-admin.js';
 import { $, esc, money, date, toast, modal, closeModal, setupModal, useForm, field, errorHtml, errorMessage, setHeader, rememberAdmin, paymentChecks, bindPaymentChecks, yesDate, downloadCsv } from './ui.js';
 
 // One page shell serves /auktion, /tilmelding, /deltager and /admin. The address decides what to show.
@@ -555,6 +556,7 @@ async function adminView() {
     ['registrations', 'Turnering', 'Tilmeldinger, inviterede spillere og betaling', !inAuction && adminTab === 'registrations'],
     ['tickets', 'Showkamp', 'Billetter, indtjekning og scanner', adminTab === 'tickets'],
     [auctionTab, 'Auktion', 'Auktioner, budgivere, vindere og papirkurv', inAuction],
+    ['program', 'Program', 'Dagens program på forsiden og Showkamp-siden', adminTab === 'program'],
   ];
   const subTabs = [
     ['lots', 'Auktioner'],
@@ -588,6 +590,7 @@ async function adminView() {
     if (code) history.replaceState(null, '', '/admin');
     return ticketAdminView(client, body, { refresh: adminView, code });
   }
+  if (adminTab === 'program') return programAdminView(client, body, { refresh: adminView });
   if (adminTab === 'lots') return adminLots(body);
   if (adminTab === 'people') return adminPeople(body);
   if (adminTab === 'winners') return adminWinners(body);

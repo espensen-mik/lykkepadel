@@ -189,6 +189,17 @@ Kør `invited-players.sql` én gang efter `invoice-payments.sql` og `admin-edit-
 
 `node --test tests/invited-players.test.mjs` tester funktionerne.
 
+## Program
+
+Kør `program.sql` én gang efter `auction-setup.sql`. Den opretter tabellen `program_items` med det nuværende program og to admin-funktioner, `save_program_item(...)` og `delete_program_item(id)`.
+
+- Hvert punkt hører til en af dagens to dele (`turnering` eller `showkamp`) og har en starttid, en valgfri sluttid, en titel og en valgfri tekst.
+- Alle kan læse programmet. Kun administratorer kan ændre det, og kun gennem funktionerne. Ændringer skrives i audit-loggen.
+- Forsiden viser de to dele side om side. Charity Showkamp-siden viser Showkamp-punkterne og de Turnering-punkter, der er markeret "Vis også på Charity Showkamp-siden".
+- Siderne har programmet i HTML'en som reserve, hvis databasen ikke svarer.
+
+`node --test tests/program.test.mjs` tester funktionerne.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.
