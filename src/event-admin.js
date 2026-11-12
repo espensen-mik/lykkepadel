@@ -57,7 +57,7 @@ export async function eventAdminView(client, { refresh }) {
   ${cancelled ? `<label class="lp-check lp-check--small" style="margin-bottom: 12px"><input type="checkbox" id="show-cancelled" ${showCancelled ? 'checked' : ''}><span>Vis annullerede (${cancelled})</span></label>` : ''}
   ${shown.length
     ? `
-    <div class="lp-tablebox"><table class="lp-table">
+    <div class="lp-tablebox"><table class="lp-table lp-table--stack">
       <thead><tr><th scope="col">Navn</th><th scope="col">Kontakt</th><th scope="col">Deltagelse</th><th scope="col">T-shirt og synlighed</th><th scope="col">Betaling</th><th scope="col">Status</th><th scope="col">Oprettet</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
       <tbody>${shown
         .map(
@@ -65,7 +65,7 @@ export async function eventAdminView(client, { refresh }) {
         <td><strong>${esc(r.full_name)}</strong>${r.public_title ? `<br><span class="lp-help">${esc(r.public_title)}</span>` : ''}${r.partner_name ? `<br><span class="lp-help">& ${esc(r.partner_name)}${r.partner_public_title ? ` · ${esc(r.partner_public_title)}` : ''}</span>` : ''}<br><span class="lp-help">Ref. ${esc(r.id.slice(0, 8).toUpperCase())}</span></td>
         <td>${[r.email, r.phone].filter(Boolean).map(esc).join('<br>') || '<span class="lp-help">Ingen kontakt</span>'}${r.billing_address ? `<br><span class="lp-help">${esc(r.billing_address)}</span>` : ''}</td>
         <td>${r.kind === 'individual' ? 'Individuel · 1 plads' : 'Makkerpar · 2 pladser'}</td>
-        <td>${'shirt_size' in r ? `${r.shirt_size ? esc(r.shirt_size) : '<span class="lp-help">Ingen størrelse</span>'}${r.kind === 'pair' ? ` / ${r.partner_shirt_size ? esc(r.partner_shirt_size) : '<span class="lp-help">–</span>'}` : ''}${r.company ? `<br>${esc(r.company)}` : ''}${r.partner_company ? `<br><span class="lp-help">& ${esc(r.partner_company)}</span>` : ''}<br>${r.publish_consent ? '<span class="lp-pill lp-pill--lead">Vises på websitet</span>' : '<span class="lp-help">Vises ikke</span>'}` : '<span class="lp-help">–</span>'}</td>
+        <td>${'shirt_size' in r ? `${r.shirt_size ? `T-shirt ${esc(r.shirt_size)}` : '<span class="lp-help">Ingen T-shirt valgt</span>'}${r.kind === 'pair' ? ` / ${r.partner_shirt_size ? esc(r.partner_shirt_size) : '<span class="lp-help">–</span>'}` : ''}${r.company ? `<br>${esc(r.company)}` : ''}${r.partner_company ? `<br><span class="lp-help">& ${esc(r.partner_company)}</span>` : ''}<br>${r.publish_consent ? '<span class="lp-pill lp-pill--outbid">Vises på websitet</span>' : '<span class="lp-help">Vises ikke på websitet</span>'}` : '<span class="lp-help">–</span>'}</td>
         <td>${r.settlement === 'invoice' ? `<strong>${money(r.amount_due)}</strong>${'paid_at' in r && r.status === 'confirmed' ? paymentChecks(r.id, r) : ''}` : r.settlement === 'invited' ? `<span class="lp-pill lp-pill--live">Inviteret</span><br><span class="lp-help">Gratis</span>` : `${money(0)}<br><span class="lp-help">Rabatkode</span>`}</td>
         <td>${r.status === 'confirmed' ? '<span class="lp-pill lp-pill--lead">Bekræftet</span>' : '<span class="lp-pill lp-pill--quiet">Annulleret</span>'}</td>
         <td>${new Date(r.created_at).toLocaleDateString('da-DK')}</td>
