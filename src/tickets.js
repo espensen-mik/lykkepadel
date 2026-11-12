@@ -179,8 +179,9 @@ function checkout(order, draft) {
     $('#pay-error').innerHTML = '';
     try {
       await api('pay_test_ticket_order', { p_id: order.id, p_token: order.token });
-      // The receipt mail must not hold up the tickets; the ticket page works either way.
-      fetch('/api/ticket-receipt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: order.id, token: order.token }) }).catch(() => {});
+      // The receipt mail must not hold up the tickets. keepalive lets the request finish while the page changes,
+      // and the ticket page sends it again if it still has not gone out.
+      sendReceipt(order.id, order.token);
       location.assign(`/billet#${order.id}.${order.token}`);
     } catch (error) {
       $('#pay-error').innerHTML = errorHtml(errorMessage(error));
@@ -193,6 +194,9 @@ const ticketUrl = (code) => `${location.origin}/scan#${code}`;
 const kr = (value) => money(value);
 const date = (value) => new Date(value).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Copenhagen' });
 
+const sendReceipt = (order, token) =>
+  fetch('/api/ticket-receipt', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order, token }) }).catch(() => {});
+
 // Step 3: the tickets and the receipt.
 async function showOrder() {
   const [id, token] = location.hash.slice(1).split('.');
@@ -202,6 +206,8 @@ async function showOrder() {
   }
   const order = await api('ticket_order', { p_id: id, p_token: token });
   document.title = 'Dine billetter – Lykke Padel';
+  // Safety net: if the mail was not sent right after payment, send it now. The server sends it only once.
+  if (order.status === 'paid' && !order.receipt_sent_at) sendReceipt(id, token);
   if (order.status !== 'paid') {
     const text = { pending: 'Betalingen er ikke gennemført endnu.', expired: 'Ordren er udløbet, fordi betalingen ikke blev gennemført.', cancelled: 'Ordren er annulleret, og billetterne er ugyldige.' }[order.status];
     main.innerHTML = `<div class="lp-wrap lp-section"><div class="lp-empty"><h1 class="lp-display lp-display--s">Ingen gyldige billetter</h1><p class="lp-text">${text}</p><a class="lp-btn lp-btn--primary" href="/billetter">Køb billetter</a></div></div>`;

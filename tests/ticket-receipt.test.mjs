@@ -79,7 +79,10 @@ test('an admin can resend with their session; others cannot', async () => {
   const res = await call({ order: ID }, fake(), { authorization: 'Bearer abc.def' });
   assert.equal(res.body.sent, true);
   assert.equal(calls[0].init.headers.Authorization, 'Bearer abc.def');
-  assert.ok(!calls.some((c) => c.href.endsWith('/rpc/claim_ticket_receipt')));
+  const claims = calls.filter((c) => c.href.endsWith('/rpc/claim_ticket_receipt'));
+  assert.equal(claims.length, 1, 'the resend is not blocked by an earlier send');
+  assert.ok(calls.indexOf(claims[0]) > calls.findIndex((c) => c.href.includes('resend.com')), 'marked as sent only after the mail went out');
+  assert.equal(claims[0].body.p_claim, true);
   assert.equal((await call({ order: ID }, fake({ admin: false }), { authorization: 'Bearer abc.def' })).statusCode, 403);
 });
 

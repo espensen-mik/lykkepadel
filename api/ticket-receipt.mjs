@@ -79,5 +79,7 @@ export default async function handler(req, res, { fetch: send = fetch } = {}) {
     if (!resendByAdmin) await rpc('claim_ticket_receipt', { p_id: body.order, p_token: token, p_claim: false });
     return reply(res, 502, { error: 'Mailen kunne ikke sendes. Prøv igen om lidt.' });
   }
+  // An admin resend also marks the receipt as sent, if it was not already (the first send claims it beforehand).
+  if (resendByAdmin) await rpc('claim_ticket_receipt', { p_id: body.order, p_token: token, p_claim: true }).catch(() => {});
   return reply(res, 200, { sent: true, to: order.email });
 }
