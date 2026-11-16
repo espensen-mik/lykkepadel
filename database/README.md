@@ -211,6 +211,10 @@ Kør `program.sql` én gang efter `auction-setup.sql`. Den opretter tabellen `pr
 
 `node --test tests/program.test.mjs` tester funktionerne.
 
+## Tekst: tombola → fundraising
+
+Kør `text-fundraising.sql` én gang efter `program.sql`. Den retter "tombola" til "fundraising" i programmet i databasen og viser programmet bagefter. Det samme kan gøres under Admin → Program.
+
 ## Ikke en offentlig lancering
 
 Opsætningen er lukket for offentlig læsning. Administratorer kan se kladder, godkendte budgivere kan se publicerede auktioner. En anonym besøgende kan først se publicerede auktioner, når `auction_private.settings.is_open` bevidst sættes til true. Ingen ændring af forsiden er nødvendig.

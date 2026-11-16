@@ -23,7 +23,7 @@ create policy program_read on public.program_items for select to anon, authentic
 -- The program as it is on the site today.
 insert into public.program_items(track, starts_at, ends_at, title, description, on_showkamp_page) values
   ('turnering', '12:30', null, 'Turneringen begynder', 'For erhvervslivet, partnere og inviterede gæster.', false),
-  ('showkamp', '16:00', null, 'Dørene åbner', 'Madboder, drikkevarer, NORMAL × LykkeLiga-tombola og DJ.', true),
+  ('showkamp', '16:00', null, 'Dørene åbner', 'Madboder, drikkevarer, NORMAL × LykkeLiga-fundraising og DJ.', true),
   ('turnering', '16:30', null, 'Finaler', 'Spilles foran publikum.', true),
   ('turnering', '17:00', null, 'Turneringen slutter', 'Deltagerne fortsætter med VIP-adgang: spisning, drikkevarer og VIP-område.', false),
   ('showkamp', '17:30', '18:30', 'Fundraising hour', 'Beat the pro, kicksmash- og stopboldkonkurrence.', true),
