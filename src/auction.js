@@ -92,7 +92,7 @@ function link(id) {
 
 function instagram(lot) {
   if (!/^[a-zA-Z0-9_.]{1,30}$/.test(lot.instagram || '')) return '';
-  return `<a href="https://www.instagram.com/${esc(lot.instagram)}/" target="_blank" rel="noopener noreferrer">@${esc(lot.instagram)} på Instagram</a>`;
+  return `<a class="lp-fact lp-fact--link" href="https://www.instagram.com/${esc(lot.instagram)}/" target="_blank" rel="noopener noreferrer"><span>Instagram</span><strong>@${esc(lot.instagram)}</strong></a>`;
 }
 
 // ---------- Header ----------
@@ -305,7 +305,8 @@ function detail(id) {
   const waiting = notStarted(lot);
   const item = kindOf(lot) === 'item';
   const others = liveLots().filter((l) => l.id !== lot.id).slice(0, 3);
-  const meta = [esc(lot.category), item && lot.value_text ? `Værdi: ${esc(lot.value_text)}` : '', instagram(lot)].filter(Boolean).join(' · ');
+  // Small facts under the name. The category is already on the image and in the eyebrow, so it is not repeated here.
+  const facts = [item && lot.value_text ? `<span class="lp-fact"><span>Værdi</span><strong>${esc(lot.value_text)}</strong></span>` : '', instagram(lot)].filter(Boolean).join('');
 
   main.innerHTML = `
   <div class="lp-wrap" style="padding-block: 28px var(--space-9)">
@@ -319,7 +320,7 @@ function detail(id) {
         <div style="display: flex; flex-direction: column; gap: 12px">
           <p class="lp-eyebrow" style="color: var(--red-text)">${item ? 'Charity-produkt' : 'Padelmakker · kun for deltagere i Charity Turnering'}</p>
           <h1 class="lp-detail-name">${esc(lot.name)}</h1>
-          <p class="lp-lot__insta">${meta}</p>
+          ${facts ? `<div class="lp-facts-row">${facts}</div>` : ''}
         </div>
         <p class="lp-text" style="white-space: pre-line">${esc(lot.description)}</p>
         <section class="lp-panel" aria-label="Bud på ${esc(lot.name)}">
