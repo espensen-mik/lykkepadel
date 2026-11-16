@@ -27,3 +27,20 @@ mountProgram();
 
 // The floating "Støt LykkeLiga" button.
 mountDonate();
+
+// The "Kontakt" button in the top bar opens a small card with Signe's mail and phone.
+const contact = document.querySelector('.lp-contactmenu');
+if (contact) {
+  const toggle = contact.querySelector('.lp-contactmenu__toggle');
+  const card = contact.querySelector('.lp-contactmenu__card');
+  const open = (show, focusBack = true) => {
+    card.hidden = !show;
+    contact.classList.toggle('is-open', show);
+    toggle.setAttribute('aria-expanded', String(show));
+    if (show) card.querySelector('a')?.focus({ preventScroll: true });
+    else if (focusBack) toggle.focus();
+  };
+  toggle.addEventListener('click', () => open(card.hidden));
+  contact.addEventListener('keydown', (event) => event.key === 'Escape' && !card.hidden && open(false));
+  document.addEventListener('click', (event) => !card.hidden && !contact.contains(event.target) && open(false, false));
+}
