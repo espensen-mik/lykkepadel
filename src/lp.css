@@ -835,3 +835,40 @@ select.lp-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http:/
   .lp-donate__toggle svg, .lp-donate__panel { animation: none; }
   .lp-donate__toggle, .lp-donate__toggle:hover { transition: none; transform: none; }
 }
+
+/* "Kontakt" in the top bar: a round button like "Log ind" that opens a small card with Signe. */
+.lp-contactmenu { position: relative; }
+.lp-contactmenu__toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px 0 12px; border: 2px solid var(--line-dark); border-radius: 999px; background: transparent; color: var(--cream); font: 600 15px var(--font-body); cursor: pointer; transition: border-color 200ms ease, background-color 200ms ease, color 200ms ease; }
+.lp-contactmenu__toggle:hover, .lp-contactmenu.is-open .lp-contactmenu__toggle { border-color: var(--cream); }
+.lp-contactmenu.is-open .lp-contactmenu__toggle { background: var(--cream); color: var(--brown); }
+.lp-contactmenu__toggle:focus-visible { outline: 3px solid var(--red-light); outline-offset: 3px; }
+.lp-contactmenu__toggle svg { flex: none; }
+.lp-contactmenu__card { position: absolute; top: calc(100% + 14px); right: 0; z-index: 70; width: 340px; box-sizing: border-box; padding: 22px; border-radius: 20px; background: var(--cream); color: var(--ink); box-shadow: 0 24px 60px rgba(43, 21, 19, .35); border-top: 8px solid var(--red-deep); transform-origin: top right; animation: lp-contact-in 240ms cubic-bezier(.22, 1, .36, 1); }
+.lp-contactmenu__card[hidden] { display: none; }
+@keyframes lp-contact-in { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+.lp-contactmenu__person { display: flex; align-items: center; gap: 14px; }
+.lp-contactmenu__photo { flex: none; width: 72px; height: 72px; border-radius: 50%; object-fit: cover; object-position: center 25%; filter: grayscale(1) sepia(.45) contrast(1.05); box-shadow: 0 0 0 3px var(--cream), 0 0 0 5px var(--red-deep); }
+.lp-contactmenu__eyebrow { margin: 0 0 2px; color: var(--red-text); font: 700 12px var(--font-body); letter-spacing: .4px; text-transform: uppercase; }
+.lp-contactmenu__name { margin: 0; font: 400 30px/0.95 var(--font-display); color: var(--brown); letter-spacing: .3px; }
+.lp-contactmenu__role { margin: 4px 0 0; font: 600 13px/1.3 var(--font-body); color: var(--ink-muted); }
+.lp-contactmenu__text { margin: 16px 0 14px; font: 400 14px/1.5 var(--font-body); color: var(--ink-muted); }
+.lp-contactmenu__action { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 12px 16px; border: 2px solid var(--sand); border-radius: 14px; background: #fff; color: var(--ink); text-decoration: none; transition: border-color 150ms ease, transform 150ms ease, background 150ms ease; }
+.lp-contactmenu__action svg { flex: none; color: var(--red-deep); }
+.lp-contactmenu__action > span { display: flex; flex-direction: column; min-width: 0; }
+.lp-contactmenu__action strong { font: 800 15px var(--font-body); }
+.lp-contactmenu__action > span > span { font: 500 14px var(--font-body); color: var(--ink-muted); overflow-wrap: anywhere; }
+.lp-contactmenu__action:hover { border-color: var(--red-deep); transform: translateY(-1px); }
+.lp-contactmenu__action.is-primary { border-color: var(--red-deep); background: var(--red-deep); color: var(--cream); }
+.lp-contactmenu__action.is-primary svg, .lp-contactmenu__action.is-primary > span > span { color: var(--cream); }
+.lp-contactmenu__action.is-primary > span > span { opacity: .85; }
+.lp-contactmenu__action.is-primary:hover { background: var(--red-text); border-color: var(--red-text); }
+.lp-contactmenu__action:focus-visible, .lp-contactmenu__more:focus-visible { outline: 3px solid var(--brown); outline-offset: 2px; }
+.lp-contactmenu__more { display: inline-flex; gap: 6px; margin-top: 14px; color: var(--red-text); font: 700 13px var(--font-body); text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 640px) {
+  .lp-contactmenu { position: static; }
+  .lp-contactmenu__toggle { min-height: 38px; width: 38px; padding: 0; justify-content: center; }
+  .lp-contactmenu__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .lp-contactmenu__card { position: absolute; top: 64px; left: 12px; right: 12px; width: auto; padding: 20px 18px; }
+  .lp-header__inner { position: relative; }
+}
+@media (prefers-reduced-motion: reduce) { .lp-contactmenu__card { animation: none; } }
