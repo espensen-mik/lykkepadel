@@ -44,6 +44,7 @@
 /* "Powered by NORMAL" under the logo, left-aligned: small, spaced capitals, NORMAL a little brighter. */
 .lp-header__logo { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 7px; color: var(--cream); text-decoration: none; }
 .lp-header__powered { display: flex; align-items: center; gap: 8px; font: 400 13px/1 var(--font-display); letter-spacing: 3px; text-transform: uppercase; color: rgb(255 252 224 / .6); }
+.lp-header__powered::before { content: ""; width: 18px; height: 2px; background: var(--cream); }
 .lp-header__powered strong { font-weight: 400; color: var(--cream); }
 .lp-nav { display: flex; flex-wrap: wrap; gap: 6px 28px; font: 600 15px/1.6 var(--font-body); }
 .lp-nav a { color: var(--sand); text-decoration: none; }
@@ -493,6 +494,7 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
   .lp-header__logo img { height: 18px; }
   .lp-header__logo { gap: 5px; justify-self: start; }
   .lp-header__powered { gap: 6px; padding-left: 3px; font-size: 10px; letter-spacing: 2.2px; }
+  .lp-header__powered::before { width: 12px; }
   .lp-header__actions { grid-column: 2; grid-row: 1; gap: 6px; }
   .lp-account { min-height: 38px; padding: 0 12px 0 10px; gap: 6px; font-size: 14px; }
   .lp-account-logout { min-height: 38px; width: 38px; padding: 0; justify-content: center; }
