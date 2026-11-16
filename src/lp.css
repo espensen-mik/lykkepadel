@@ -290,6 +290,14 @@ select.lp-input { appearance: none; background-image: linear-gradient(45deg, tra
 .lp-photo--square img { aspect-ratio: 1; }
 .lp-lot__link { color: inherit; text-decoration: none; display: flex; flex-direction: column; flex: 1; }
 .lp-lot__insta { margin: 0; font: 600 15px var(--font-body); color: var(--ink-muted); }
+/* Facts under an auction's name, e.g. "VÆRDI Uvurderlig" and the Instagram link, each in its own small box. */
+.lp-facts-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.lp-fact { display: inline-flex; align-items: baseline; gap: 8px; padding: 7px 12px; border: 2px solid var(--sand); border-radius: 10px; color: var(--ink); text-decoration: none; }
+.lp-fact > span { font: 400 14px/1 var(--font-display); letter-spacing: 1.2px; text-transform: uppercase; color: var(--red-text); }
+.lp-fact strong { font: 700 15px/1.2 var(--font-body); }
+.lp-fact--link:hover { border-color: var(--red-deep); }
+.lp-fact--link:hover strong { color: var(--red-text); }
+.lp-fact--link:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
 .lp-detail-media { flex: 1 1 460px; }
 .lp-detail-body { flex: 1 1 440px; display: flex; flex-direction: column; gap: var(--space-5); }
 .lp-detail-name { margin: 0; font: 400 clamp(64px, 7vw, 104px)/0.9 var(--font-display); color: var(--red); }
