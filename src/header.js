@@ -1,6 +1,7 @@
 import { setHeader, sessionUserId } from './ui.js';
 import { loadLatestPlayers, playerHtml, startTicker } from './ticker.js';
 import { mountProgram } from './program.js';
+import { mountDonate } from './donate.js';
 
 // Content pages don't load Supabase. A stored session is enough to show "Min side" (or "Admin");
 // the pages behind the button check the session properly when they open.
@@ -23,3 +24,6 @@ document.querySelectorAll('[data-latest-players]').forEach(async (el) => {
 
 // The program on the front page and the Charity Showkamp page comes from the database (Admin → Program).
 mountProgram();
+
+// The floating "Støt LykkeLiga" button.
+mountDonate();
